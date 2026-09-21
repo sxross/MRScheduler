@@ -1,9 +1,9 @@
 import type { Configuration, Schedule } from '../src/model/types.js';
 
-/** Portland, Oregon -- mid-latitude, all twilight events occur year round. */
-export const PORTLAND = {
-  latitude: 45.52,
-  longitude: -122.68,
+/** Los Angeles -- the deployment location. All twilight events occur year round. */
+export const LA = {
+  latitude: 34.05,
+  longitude: -118.24,
   timezone: 'America/Los_Angeles',
 };
 
@@ -18,7 +18,7 @@ export const EVERY_DAY: Schedule['days'] = ['sun', 'mon', 'tue', 'wed', 'thu', '
 
 export function config(partial: Partial<Configuration> = {}): Configuration {
   return {
-    location: PORTLAND,
+    location: LA,
     devices: {
       porch: { id: 'porch', name: 'Porch Lights', enabled: true },
       kitchen: { id: 'kitchen', name: 'Kitchen', enabled: true },

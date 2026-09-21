@@ -6,19 +6,16 @@
  * executable schedule requires it to be ON. No priority system.
  */
 import type { DateTime } from 'luxon';
-import type {
-  Configuration,
-  Schedule,
-  TransitionKind,
-  Weekday,
-} from '../model/types.js';
+import type { Configuration, Schedule, ScheduleKind, Weekday } from '../model/types.js';
 import { WEEKDAYS } from '../model/types.js';
 import { MINUTES_PER_DAY, resolveEndpoint, type SolarDay } from './solarDay.js';
-import { evaluateTransition, isPermitted, type Verdict } from './constraints.js';
+import { evaluateTransition, type Verdict } from './constraints.js';
 
 export interface CycleEdge {
+  /** Where the user's rule puts this edge, before any fence is applied. */
+  requestedAt: DateTime;
+  /** Where the scheduler will actually act. Differs when clamped. */
   at: DateTime;
-  /** Natural position on the noon-origin axis; what constraints are judged on. */
   ordinal: number;
   verdict: Verdict;
 }
@@ -37,12 +34,13 @@ export interface UnresolvedCycle {
   scheduleId: string;
   deviceId: string;
   reason: string;
+  /** Clamping inverted the interval, leaving nothing to execute. */
+  collapsed: boolean;
 }
 
 export interface DayResolution {
   day: SolarDay;
   cycles: ResolvedCycle[];
-  /** Cycles that could not be placed at all (e.g. polar latitudes). */
   unresolved: UnresolvedCycle[];
 }
 
@@ -51,8 +49,8 @@ function weekdayOf(at: DateTime): Weekday {
   return WEEKDAYS[at.weekday % 7]!;
 }
 
-function exemptions(schedule: Schedule): readonly TransitionKind[] {
-  return schedule.exemptFrom ?? [];
+export function kindOf(schedule: Schedule): ScheduleKind {
+  return schedule.kind ?? 'governed';
 }
 
 /** Resolve every enabled schedule that starts on `day` into a concrete cycle. */
@@ -64,14 +62,13 @@ export function resolveDay(config: Configuration, day: SolarDay): DayResolution 
     const device = config.devices[schedule.deviceId];
     if (!schedule.enabled || !device?.enabled) continue;
 
+    const fail = (reason: string, collapsed = false) =>
+      unresolved.push({ scheduleId: schedule.id, deviceId: schedule.deviceId, reason, collapsed });
+
     const on = resolveEndpoint(schedule.on, day, config.location);
     const off = resolveEndpoint(schedule.off, day, config.location);
     if (!on.ok || !off.ok) {
-      unresolved.push({
-        scheduleId: schedule.id,
-        deviceId: schedule.deviceId,
-        reason: on.ok ? (off as { reason: string }).reason : on.reason,
-      });
+      fail(on.ok ? (off as { reason: string }).reason : on.reason);
       continue;
     }
 
@@ -79,20 +76,42 @@ export function resolveDay(config: Configuration, day: SolarDay): DayResolution 
     // starts Friday evening even when it ends Saturday morning.
     if (!schedule.days.includes(weekdayOf(on.at))) continue;
 
-    const exempt = exemptions(schedule);
-    const onVerdict = evaluateTransition('on', on.ordinal, config.constraints, exempt, day, config.location);
-    const offVerdict = evaluateTransition('off', off.ordinal, config.constraints, exempt, day, config.location);
+    const kind = kindOf(schedule);
+    const onVerdict = evaluateTransition('on', on.ordinal, config.constraints, kind, day, config.location);
+    const offVerdict = evaluateTransition('off', off.ordinal, config.constraints, kind, day, config.location);
+    if (onVerdict.status === 'indeterminate') { fail(onVerdict.reason); continue; }
+    if (offVerdict.status === 'indeterminate') { fail(offVerdict.reason); continue; }
 
-    // An OFF at or before its ON belongs to the next turn of the axis.
-    const intervalEnd = off.ordinal > on.ordinal ? off.ordinal : off.ordinal + MINUTES_PER_DAY;
+    // Clamping can in principle drag the edges past each other. Detect it by
+    // comparing against the ordering the user asked for rather than letting
+    // the interval silently wrap into a near-24-hour ON.
+    if (off.ordinal > on.ordinal && offVerdict.ordinal <= onVerdict.ordinal) {
+      fail('Constraint clamping leaves this schedule with no time to run.', true);
+      continue;
+    }
+
+    const intervalEnd =
+      offVerdict.ordinal > onVerdict.ordinal
+        ? offVerdict.ordinal
+        : offVerdict.ordinal + MINUTES_PER_DAY;
 
     cycles.push({
       scheduleId: schedule.id,
       deviceId: schedule.deviceId,
-      on: { at: on.at, ordinal: on.ordinal, verdict: onVerdict },
-      off: { at: off.at, ordinal: off.ordinal, verdict: offVerdict },
+      on: {
+        requestedAt: on.at,
+        at: day.start.plus({ minutes: onVerdict.ordinal }),
+        ordinal: onVerdict.ordinal,
+        verdict: onVerdict,
+      },
+      off: {
+        requestedAt: off.at,
+        at: day.start.plus({ minutes: offVerdict.ordinal }),
+        ordinal: offVerdict.ordinal,
+        verdict: offVerdict,
+      },
       intervalEnd,
-      executable: isPermitted(onVerdict) && isPermitted(offVerdict),
+      executable: true,
     });
   }
 
@@ -107,12 +126,7 @@ export interface DeviceInterval {
   scheduleIds: string[];
 }
 
-/**
- * Merge overlapping cycles per device into the intervals the device is ON.
- *
- * Only executable cycles contribute. A cycle blocked by a constraint is
- * reported as a conflict elsewhere and silently rewritten nowhere.
- */
+/** Merge overlapping cycles per device into the intervals the device is ON. */
 export function mergeIntervals(cycles: readonly ResolvedCycle[]): DeviceInterval[] {
   const byDevice = new Map<string, ResolvedCycle[]>();
   for (const cycle of cycles) {
@@ -142,4 +156,32 @@ export function mergeIntervals(cycles: readonly ResolvedCycle[]): DeviceInterval
     }
   }
   return merged;
+}
+
+/** Every adjustment made on a day, for the timeline and the diagnostics view. */
+export interface Adjustment {
+  scheduleId: string;
+  deviceId: string;
+  transition: 'on' | 'off';
+  requestedAt: DateTime;
+  effectiveAt: DateTime;
+  bound: 'from' | 'to';
+}
+
+export function adjustmentsOf(cycles: readonly ResolvedCycle[]): Adjustment[] {
+  const out: Adjustment[] = [];
+  for (const cycle of cycles) {
+    for (const [transition, edge] of [['on', cycle.on], ['off', cycle.off]] as const) {
+      if (edge.verdict.status !== 'clamped') continue;
+      out.push({
+        scheduleId: cycle.scheduleId,
+        deviceId: cycle.deviceId,
+        transition,
+        requestedAt: edge.requestedAt,
+        effectiveAt: edge.at,
+        bound: edge.verdict.bound,
+      });
+    }
+  }
+  return out;
 }

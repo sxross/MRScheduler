@@ -27,14 +27,16 @@ describe('generated summaries', () => {
     expect(describeDays(['wed', 'mon'])).toBe('Mon, Wed');
   });
 
-  it('names an exemption in the summary rather than hiding it', () => {
-    const text = describeSchedule({
+  it('names the ad-hoc bucket rather than hiding it', () => {
+    const base = {
       id: 'k', deviceId: 'kitchen', enabled: true,
       on: { kind: 'absolute', minutesOfDay: 6 * 60 },
       off: { kind: 'absolute', minutesOfDay: 9 * 60 },
       days: EVERY_DAY,
-      exemptFrom: ['on'],
-    });
-    expect(text).toBe('Turns on at 6:00 AM and off at 9:00 AM, every day. Exempt from the ON fence.');
+    } as const;
+    expect(describeSchedule({ ...base, kind: 'adhoc' })).toBe(
+      'Turns on at 6:00 AM and off at 9:00 AM, every day. Ad-hoc: runs as drawn, outside the astronomical fences.',
+    );
+    expect(describeSchedule(base)).toBe('Turns on at 6:00 AM and off at 9:00 AM, every day.');
   });
 });

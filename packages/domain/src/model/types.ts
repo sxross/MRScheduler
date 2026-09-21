@@ -44,6 +44,18 @@ export const WEEKDAYS: readonly Weekday[] = ['sun', 'mon', 'tue', 'wed', 'thu', 
 /** Which transition a constraint window fences. */
 export type TransitionKind = 'on' | 'off';
 
+/**
+ * The two buckets of schedule.
+ *
+ * 'governed' schedules live inside the astronomical fences: their endpoints are
+ * clamped into the permitted window so lights never come on in daylight or stay
+ * on past sunrise, and the effective times drift with the seasons.
+ *
+ * 'adhoc' schedules are astronomically unaware. The user drew them deliberately
+ * and they execute as drawn -- morning kitchen lighting, for instance.
+ */
+export type ScheduleKind = 'governed' | 'adhoc';
+
 export interface Device {
   id: string;
   name: string;
@@ -58,11 +70,8 @@ export interface Schedule {
   off: Endpoint;
   /** Days the ON edge may fall on. An interval carries through to its OFF edge. */
   days: Weekday[];
-  /**
-   * The "magic override": constraint windows this schedule is excused from.
-   * Declared intent, not a silent bypass -- diagnostics name the exemption.
-   */
-  exemptFrom?: TransitionKind[];
+  /** Which bucket this schedule belongs to. Defaults to 'governed'. */
+  kind?: ScheduleKind;
 }
 
 /**

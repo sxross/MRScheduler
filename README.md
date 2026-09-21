@@ -26,14 +26,24 @@ local noon to local noon, so dusk, midnight and the following sunrise increase
 monotonically and every constraint check is a plain interval comparison. Day of
 week keys off the ON edge, so "Friday" means the cycle starting Friday evening.
 
-**Exemptions are declared, not silent.** A schedule may name the fences it is
-excused from (`exemptFrom: ['on']`) -- for kitchen lighting that is meant to run
-in the morning. Diagnostics and summaries name the exemption, so a hard
-constraint is still never silently violated.
+**There are two buckets of schedule.** A `governed` schedule lives inside the
+fences: its endpoints are clamped into the permitted window, so lights never
+come on in daylight or stay on past the morning bound, and the effective times
+drift with the seasons. An `adhoc` schedule is astronomically unaware and runs
+exactly as drawn -- morning kitchen lighting, for instance.
 
-**Nothing is silently rewritten.** A cycle that violates a fence is reported as
-a conflict with its resolved times and the window it missed. It never executes,
-and it is never adjusted to fit.
+**Clamping is never silent.** Every adjusted edge keeps both the requested and
+the effective time, and the event queue reports the adjustments it made. The one
+case that cannot be clamped -- where the fences would invert a cycle, leaving no
+time to run -- is reported as blocked rather than wrapped into a 24-hour ON.
+
+## Architecture
+
+The Mac runs a `launchd` daemon holding the scheduler, its local configuration
+cache and the Meross LAN transport. A GUI layers on top of it over a local API
+rather than embedding it, so the house keeps running whether or not anything is
+on screen. Firebase Realtime Database synchronises configuration between the
+daemon and the iOS client; it never executes anything.
 
 ## Development
 

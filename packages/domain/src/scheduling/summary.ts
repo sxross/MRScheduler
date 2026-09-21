@@ -66,8 +66,7 @@ export function describeDays(days: readonly Weekday[]): string {
 
 export function describeSchedule(schedule: Schedule): string {
   const base = `Turns on ${describeEndpoint(schedule.on)} and off ${describeEndpoint(schedule.off)}, ${describeDays(schedule.days)}.`;
-  const exempt = schedule.exemptFrom ?? [];
-  if (exempt.length === 0) return base;
-  const which = exempt.map((k) => (k === 'on' ? 'ON' : 'OFF')).join(' and ');
-  return `${base} Exempt from the ${which} fence.`;
+  return (schedule.kind ?? 'governed') === 'adhoc'
+    ? `${base} Ad-hoc: runs as drawn, outside the astronomical fences.`
+    : base;
 }

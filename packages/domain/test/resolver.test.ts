@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { mergeIntervals, resolveDay } from '../src/scheduling/resolver.js';
+import { adjustmentsOf, mergeIntervals, resolveDay } from '../src/scheduling/resolver.js';
 import { solarDay } from '../src/scheduling/solarDay.js';
 import type { Schedule } from '../src/model/types.js';
-import { config, EVERY_DAY, FENCES, PORTLAND, TROMSO } from './fixtures.js';
+import { config, EVERY_DAY, FENCES, LA, TROMSO } from './fixtures.js';
 
 // 2026-01-15 is a Thursday; its solar day closes on Friday morning.
-const day = solarDay('2026-01-15', PORTLAND);
+const day = solarDay('2026-01-15', LA);
+const june = solarDay('2026-06-15', LA);
 
 function schedule(partial: Partial<Schedule> & Pick<Schedule, 'id' | 'deviceId'>): Schedule {
   return {
@@ -47,7 +48,7 @@ describe('resolution', () => {
     expect(resolveDay(c, day).cycles).toHaveLength(0);
   });
 
-  it('marks a fence-violating cycle unexecutable without rewriting it', () => {
+  it('keeps the requested time alongside the clamped one', () => {
     const c = config({
       constraints: FENCES,
       schedules: {
@@ -55,12 +56,30 @@ describe('resolution', () => {
       },
     });
     const [cycle] = resolveDay(c, day).cycles;
-    expect(cycle?.executable).toBe(false);
-    // Intent is preserved: the endpoint still resolves to the user's time.
-    expect(cycle?.on.at.toFormat('HH:mm')).toBe('16:34');
+    expect(cycle?.executable).toBe(true);
+    expect(cycle?.on.requestedAt.toFormat('HH:mm')).toBe('16:47');
+    expect(cycle?.on.at.toFormat('HH:mm')).toBe('17:34');
   });
 
-  it('lets an exemption make an otherwise blocked cycle executable', () => {
+  it('surfaces every adjustment it made', () => {
+    const c = config({
+      constraints: FENCES,
+      schedules: {
+        s: schedule({
+          id: 's',
+          deviceId: 'porch',
+          on: { kind: 'astro', event: 'sunset', offsetMinutes: -20 },
+          off: { kind: 'absolute', minutesOfDay: 9 * 60 },
+        }),
+      },
+    });
+    const adjustments = adjustmentsOf(resolveDay(c, day).cycles);
+    expect(adjustments.map((a) => a.transition)).toEqual(['on', 'off']);
+    expect(adjustments[0]).toMatchObject({ bound: 'from' });
+    expect(adjustments[1]?.effectiveAt.toFormat('HH:mm')).toBe('07:59');
+  });
+
+  it('clamps seasonally: the same rule moves as sunrise moves', () => {
     const c = config({
       constraints: FENCES,
       schedules: {
@@ -68,12 +87,56 @@ describe('resolution', () => {
           id: 's',
           deviceId: 'kitchen',
           on: { kind: 'absolute', minutesOfDay: 6 * 60 },
-          off: { kind: 'absolute', minutesOfDay: 9 * 60 },
-          exemptFrom: ['on', 'off'],
+          off: { kind: 'absolute', minutesOfDay: 7 * 60 },
         }),
       },
     });
-    expect(resolveDay(c, day).cycles[0]?.executable).toBe(true);
+    // January: sunrise 06:59, so a 6am ON is comfortably inside the window.
+    expect(resolveDay(c, day).cycles[0]?.on.at.toFormat('HH:mm')).toBe('06:00');
+    // June: sunrise 05:42, so the same rule is pulled back to sunrise - 15m.
+    expect(resolveDay(c, june).cycles[0]?.on.at.toFormat('HH:mm')).toBe('05:27');
+  });
+
+  it('runs an ad-hoc schedule exactly as drawn in both seasons', () => {
+    const c = config({
+      constraints: FENCES,
+      schedules: {
+        s: schedule({
+          id: 's',
+          deviceId: 'kitchen',
+          kind: 'adhoc',
+          on: { kind: 'absolute', minutesOfDay: 6 * 60 },
+          off: { kind: 'absolute', minutesOfDay: 9 * 60 },
+        }),
+      },
+    });
+    for (const d of [day, june]) {
+      const [cycle] = resolveDay(c, d).cycles;
+      expect(cycle?.on.at.toFormat('HH:mm')).toBe('06:00');
+      expect(cycle?.off.at.toFormat('HH:mm')).toBe('09:00');
+      expect(adjustmentsOf(resolveDay(c, d).cycles)).toHaveLength(0);
+    }
+  });
+
+  it('blocks a cycle that clamping would invert rather than wrapping it', () => {
+    const c = config({
+      // Pathological fences: ON pinned to dusk, OFF pinned an hour earlier.
+      constraints: {
+        on: { from: { event: 'dusk', offsetMinutes: 0 }, to: { event: 'dusk', offsetMinutes: 0 } },
+        off: { from: { event: 'dusk', offsetMinutes: -60 }, to: { event: 'dusk', offsetMinutes: -60 } },
+      },
+      schedules: {
+        s: schedule({
+          id: 's',
+          deviceId: 'porch',
+          on: { kind: 'absolute', minutesOfDay: 18 * 60 },
+          off: { kind: 'absolute', minutesOfDay: 19 * 60 },
+        }),
+      },
+    });
+    const r = resolveDay(c, day);
+    expect(r.cycles).toHaveLength(0);
+    expect(r.unresolved[0]).toMatchObject({ scheduleId: 's', collapsed: true });
   });
 
   it('reports polar unresolvability instead of inventing a time', () => {
@@ -81,6 +144,7 @@ describe('resolution', () => {
     const r = resolveDay(c, solarDay('2025-12-21', TROMSO));
     expect(r.cycles).toHaveLength(0);
     expect(r.unresolved[0]?.reason).toContain('does not occur');
+    expect(r.unresolved[0]?.collapsed).toBe(false);
   });
 });
 
@@ -106,9 +170,9 @@ describe('overlapping schedules', () => {
     const intervals = mergeIntervals(resolveDay(overlapping, day).cycles);
     expect(intervals).toHaveLength(1);
     expect(intervals[0]?.scheduleIds).toEqual(['porchEvening', 'porchLate']);
-    // Opens at dusk (17:27), closes at sunrise + 30m (08:17) the next morning.
-    expect(Math.round(intervals[0]!.start)).toBe(327);
-    expect(Math.round(intervals[0]!.end)).toBe(1218);
+    // Opens at dusk (17:34), closes at sunrise + 30m (07:29) the next morning.
+    expect(Math.round(intervals[0]!.start)).toBe(335);
+    expect(Math.round(intervals[0]!.end)).toBe(1169);
   });
 
   it('keeps disjoint cycles separate', () => {
@@ -131,6 +195,26 @@ describe('overlapping schedules', () => {
     expect(mergeIntervals(resolveDay(c, day).cycles)).toHaveLength(2);
   });
 
+  it('merges a governed and an ad-hoc schedule on the same device', () => {
+    const c = config({
+      constraints: FENCES,
+      schedules: {
+        overnight: schedule({ id: 'overnight', deviceId: 'kitchen' }),
+        morning: schedule({
+          id: 'morning',
+          deviceId: 'kitchen',
+          kind: 'adhoc',
+          on: { kind: 'absolute', minutesOfDay: 7 * 60 },
+          off: { kind: 'absolute', minutesOfDay: 9 * 60 },
+        }),
+      },
+    });
+    const intervals = mergeIntervals(resolveDay(c, day).cycles);
+    // Overnight runs dusk -> 07:29; the ad-hoc morning cycle extends it to 09:00.
+    expect(intervals).toHaveLength(1);
+    expect(Math.round(intervals[0]!.end)).toBe(1260);
+  });
+
   it('keeps devices independent', () => {
     const c = config({
       schedules: {
@@ -140,23 +224,5 @@ describe('overlapping schedules', () => {
     });
     const intervals = mergeIntervals(resolveDay(c, day).cycles);
     expect(intervals.map((i) => i.deviceId).sort()).toEqual(['kitchen', 'porch']);
-  });
-
-  it('excludes unexecutable cycles from the union', () => {
-    const c = config({
-      constraints: FENCES,
-      schedules: {
-        good: schedule({ id: 'good', deviceId: 'porch' }),
-        blocked: schedule({
-          id: 'blocked',
-          deviceId: 'porch',
-          on: { kind: 'absolute', minutesOfDay: 14 * 60 },
-          off: { kind: 'absolute', minutesOfDay: 15 * 60 },
-        }),
-      },
-    });
-    const intervals = mergeIntervals(resolveDay(c, day).cycles);
-    expect(intervals).toHaveLength(1);
-    expect(intervals[0]?.scheduleIds).toEqual(['good']);
   });
 });

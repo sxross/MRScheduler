@@ -7,7 +7,13 @@
 import type { DateTime } from 'luxon';
 import type { Configuration } from '../model/types.js';
 import { solarDay, solarDayContaining, type SolarDay } from './solarDay.js';
-import { mergeIntervals, resolveDay, type ResolvedCycle } from './resolver.js';
+import {
+  adjustmentsOf,
+  mergeIntervals,
+  resolveDay,
+  type Adjustment,
+  type ResolvedCycle,
+} from './resolver.js';
 import { describeReason } from './summary.js';
 
 export type DesiredState = 'on' | 'off';
@@ -18,61 +24,40 @@ export interface ScheduledEvent {
   desiredState: DesiredState;
   /** Human-readable cause, e.g. "Sunset - 20 min". */
   reason: string;
+  /** Present when a fence moved this edge; the time the rule asked for. */
+  adjustedFrom?: DateTime;
   /** Schedules responsible for this transition. */
   scheduleIds: string[];
 }
 
-export interface Conflict {
+export interface Blocked {
   scheduleId: string;
   deviceId: string;
-  kind: 'constraint' | 'unresolvable';
   detail: string;
+  collapsed: boolean;
 }
 
 export interface EventQueue {
   events: ScheduledEvent[];
-  conflicts: Conflict[];
+  /** Fence adjustments applied, so nothing is changed without being shown. */
+  adjustments: Adjustment[];
+  /** Schedules that produced no event at all, with the reason why. */
+  blocked: Blocked[];
 }
 
-function conflictsOf(cycles: readonly ResolvedCycle[], config: Configuration): Conflict[] {
-  const out: Conflict[] = [];
-  for (const cycle of cycles) {
-    const schedule = config.schedules[cycle.scheduleId];
-    if (!schedule) continue;
-    for (const [kind, edge] of [['ON', cycle.on], ['OFF', cycle.off]] as const) {
-      if (edge.verdict.status === 'violation') {
-        out.push({
-          scheduleId: cycle.scheduleId,
-          deviceId: cycle.deviceId,
-          kind: 'constraint',
-          detail: `${kind} at ${edge.at.toFormat('h:mm a')} falls outside the permitted ${kind} window; this schedule cannot execute as configured.`,
-        });
-      } else if (edge.verdict.status === 'indeterminate') {
-        out.push({
-          scheduleId: cycle.scheduleId,
-          deviceId: cycle.deviceId,
-          kind: 'unresolvable',
-          detail: edge.verdict.reason,
-        });
-      }
-    }
-  }
-  return out;
+function edgeOf(cycles: readonly ResolvedCycle[], scheduleId: string | undefined) {
+  return cycles.find((c) => c.scheduleId === scheduleId);
 }
 
 /**
  * Build the queue covering `days` solar days starting from the one containing
- * `from`. Events at or before `from` are dropped; the caller gets only future
- * work.
+ * `from`. Events at or before `from` are dropped.
  */
-export function buildEventQueue(
-  config: Configuration,
-  from: DateTime,
-  days = 2,
-): EventQueue {
+export function buildEventQueue(config: Configuration, from: DateTime, days = 2): EventQueue {
   const first = solarDayContaining(from, config.location);
   const events: ScheduledEvent[] = [];
-  const conflicts: Conflict[] = [];
+  const adjustments: Adjustment[] = [];
+  const blocked: Blocked[] = [];
   const seen = new Set<string>();
 
   for (let i = 0; i < days; i++) {
@@ -81,44 +66,54 @@ export function buildEventQueue(
       config.location,
     );
     const resolution = resolveDay(config, day);
-    conflicts.push(...conflictsOf(resolution.cycles, config));
+    adjustments.push(...adjustmentsOf(resolution.cycles));
     for (const u of resolution.unresolved) {
-      conflicts.push({ scheduleId: u.scheduleId, deviceId: u.deviceId, kind: 'unresolvable', detail: u.reason });
+      blocked.push({
+        scheduleId: u.scheduleId,
+        deviceId: u.deviceId,
+        detail: u.reason,
+        collapsed: u.collapsed,
+      });
     }
 
     for (const interval of mergeIntervals(resolution.cycles)) {
-      const lead = resolution.cycles.find((c) => c.scheduleId === interval.scheduleIds[0]);
-      const tail = resolution.cycles.find(
+      const opening = edgeOf(resolution.cycles, interval.scheduleIds[0]);
+      const closing = resolution.cycles.find(
         (c) => interval.scheduleIds.includes(c.scheduleId) && c.intervalEnd === interval.end,
       );
-      const onSchedule = lead ? config.schedules[lead.scheduleId] : undefined;
-      const offSchedule = tail ? config.schedules[tail.scheduleId] : undefined;
 
-      const edges: Array<[number, DesiredState, string]> = [
-        [interval.start, 'on', onSchedule ? describeReason(onSchedule.on) : 'Schedule'],
-        [interval.end, 'off', offSchedule ? describeReason(offSchedule.off) : 'Schedule'],
+      const edges = [
+        { ordinal: interval.start, desiredState: 'on' as const, cycle: opening, side: 'on' as const },
+        { ordinal: interval.end, desiredState: 'off' as const, cycle: closing, side: 'off' as const },
       ];
 
-      for (const [ordinal, desiredState, reason] of edges) {
-        const at = day.start.plus({ minutes: ordinal });
+      for (const edge of edges) {
+        const at = day.start.plus({ minutes: edge.ordinal });
         if (at <= from) continue;
         // Adjacent solar days both cover the boundary; keep one copy.
-        const key = `${interval.deviceId}|${at.toMillis()}|${desiredState}`;
+        const key = `${interval.deviceId}|${at.toMillis()}|${edge.desiredState}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        events.push({
+
+        const schedule = edge.cycle ? config.schedules[edge.cycle.scheduleId] : undefined;
+        const cycleEdge = edge.cycle?.[edge.side];
+        const event: ScheduledEvent = {
           deviceId: interval.deviceId,
           at,
-          desiredState,
-          reason,
+          desiredState: edge.desiredState,
+          reason: schedule ? describeReason(schedule[edge.side]) : 'Schedule',
           scheduleIds: [...interval.scheduleIds],
-        });
+        };
+        if (cycleEdge?.verdict.status === 'clamped') {
+          event.adjustedFrom = cycleEdge.requestedAt;
+        }
+        events.push(event);
       }
     }
   }
 
   events.sort((a, b) => a.at.toMillis() - b.at.toMillis());
-  return { events, conflicts };
+  return { events, adjustments, blocked };
 }
 
 /** The state a device should be in at `instant`, per the current configuration. */

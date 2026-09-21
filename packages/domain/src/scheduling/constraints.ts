@@ -5,32 +5,47 @@
  * sunrise" cannot be expressed as an upper bound alone -- that would still
  * permit an ON at 2pm, since 2pm precedes the next sunrise. Both edges are
  * required, and together they describe the permitted region the timeline draws.
+ *
+ * Governed schedules are clamped into their window rather than rejected: the
+ * user draws "on in the evening" and the effective time tracks the astronomical
+ * clock through the year. Clamping is never silent -- the verdict carries both
+ * the requested and effective times so the UI and diagnostics can show the
+ * adjustment. Ad-hoc schedules are astronomically unaware and pass through.
  */
-import type { Constraints, Location, TransitionKind } from '../model/types.js';
+import type { Constraints, Location, ScheduleKind, TransitionKind } from '../model/types.js';
 import { resolveEndpoint, type SolarDay } from './solarDay.js';
 
+export interface WindowBounds {
+  from: number;
+  to: number;
+}
+
 export type Verdict =
-  /** No window fences this transition. */
-  | { status: 'unfenced' }
-  /** Inside the permitted window. */
-  | { status: 'permitted'; window: { from: number; to: number } }
-  /** Outside the window, but the schedule declares an exemption. */
-  | { status: 'exempt'; window: { from: number; to: number } }
-  /** Outside the window with no exemption: must not execute. */
-  | { status: 'violation'; window: { from: number; to: number }; ordinal: number }
+  /** Ad-hoc schedule, or no window fences this transition. */
+  | { status: 'unfenced'; ordinal: number }
+  /** Already inside the permitted window; nothing adjusted. */
+  | { status: 'within'; window: WindowBounds; ordinal: number }
+  /** Moved to the nearest edge of the permitted window. */
+  | {
+      status: 'clamped';
+      window: WindowBounds;
+      requested: number;
+      ordinal: number;
+      bound: 'from' | 'to';
+    }
   /** The window's own anchors could not be computed (polar latitudes). */
   | { status: 'indeterminate'; reason: string };
 
 export function evaluateTransition(
   kind: TransitionKind,
-  ordinal: number,
+  requested: number,
   constraints: Constraints,
-  exemptFrom: readonly TransitionKind[],
+  scheduleKind: ScheduleKind,
   day: SolarDay,
   location: Location,
 ): Verdict {
   const window = constraints[kind];
-  if (!window) return { status: 'unfenced' };
+  if (scheduleKind === 'adhoc' || !window) return { status: 'unfenced', ordinal: requested };
 
   const from = resolveEndpoint({ kind: 'astro', ...window.from }, day, location);
   const to = resolveEndpoint({ kind: 'astro', ...window.to }, day, location);
@@ -38,15 +53,16 @@ export function evaluateTransition(
   if (!to.ok) return { status: 'indeterminate', reason: to.reason };
 
   const bounds = { from: from.ordinal, to: to.ordinal };
-  if (ordinal >= bounds.from && ordinal <= bounds.to) {
-    return { status: 'permitted', window: bounds };
+  if (requested < bounds.from) {
+    return { status: 'clamped', window: bounds, requested, ordinal: bounds.from, bound: 'from' };
   }
-  return exemptFrom.includes(kind)
-    ? { status: 'exempt', window: bounds }
-    : { status: 'violation', window: bounds, ordinal };
+  if (requested > bounds.to) {
+    return { status: 'clamped', window: bounds, requested, ordinal: bounds.to, bound: 'to' };
+  }
+  return { status: 'within', window: bounds, ordinal: requested };
 }
 
-/** Whether a verdict allows the scheduler to act. Violations never execute. */
-export function isPermitted(verdict: Verdict): boolean {
-  return verdict.status !== 'violation' && verdict.status !== 'indeterminate';
+/** The position the scheduler will actually act on, or null if uncomputable. */
+export function effectiveOrdinal(verdict: Verdict): number | null {
+  return verdict.status === 'indeterminate' ? null : verdict.ordinal;
 }

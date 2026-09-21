@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { DateTime } from 'luxon';
 import { ordinalOf, resolveEndpoint, solarDay, solarDayContaining } from '../src/scheduling/solarDay.js';
-import { PORTLAND, TROMSO } from './fixtures.js';
+import { LA, TROMSO } from './fixtures.js';
 
 describe('the noon-origin axis', () => {
-  const day = solarDay('2026-01-15', PORTLAND);
+  const day = solarDay('2026-01-15', LA);
 
   it('opens at local noon', () => {
     expect(day.start.toISO()).toBe('2026-01-15T12:00:00.000-08:00');
@@ -12,20 +12,20 @@ describe('the noon-origin axis', () => {
   });
 
   it('places an evening absolute time in the afternoon that opened the day', () => {
-    const r = resolveEndpoint({ kind: 'absolute', minutesOfDay: 18 * 60 + 30 }, day, PORTLAND);
+    const r = resolveEndpoint({ kind: 'absolute', minutesOfDay: 18 * 60 + 30 }, day, LA);
     expect(r.ok && r.ordinal).toBe(390);
     expect(r.ok && r.at.toFormat('yyyy-MM-dd HH:mm')).toBe('2026-01-15 18:30');
   });
 
   it('places a morning absolute time in the morning that closes the day', () => {
-    const r = resolveEndpoint({ kind: 'absolute', minutesOfDay: 6 * 60 }, day, PORTLAND);
+    const r = resolveEndpoint({ kind: 'absolute', minutesOfDay: 6 * 60 }, day, LA);
     expect(r.ok && r.ordinal).toBe(1080);
     expect(r.ok && r.at.toFormat('yyyy-MM-dd HH:mm')).toBe('2026-01-16 06:00');
   });
 
   it('orders dusk before the following sunrise without wraparound', () => {
-    const dusk = resolveEndpoint({ kind: 'astro', event: 'dusk', offsetMinutes: 0 }, day, PORTLAND);
-    const sunrise = resolveEndpoint({ kind: 'astro', event: 'sunrise', offsetMinutes: 0 }, day, PORTLAND);
+    const dusk = resolveEndpoint({ kind: 'astro', event: 'dusk', offsetMinutes: 0 }, day, LA);
+    const sunrise = resolveEndpoint({ kind: 'astro', event: 'sunrise', offsetMinutes: 0 }, day, LA);
     expect(dusk.ok && sunrise.ok && dusk.ordinal < sunrise.ordinal).toBe(true);
     // Sanity: both land inside the solar day.
     expect(dusk.ok && dusk.ordinal).toBeGreaterThan(0);
@@ -33,22 +33,22 @@ describe('the noon-origin axis', () => {
   });
 
   it('applies signed offsets to astronomical anchors', () => {
-    const plain = resolveEndpoint({ kind: 'astro', event: 'sunset', offsetMinutes: 0 }, day, PORTLAND);
-    const early = resolveEndpoint({ kind: 'astro', event: 'sunset', offsetMinutes: -20 }, day, PORTLAND);
+    const plain = resolveEndpoint({ kind: 'astro', event: 'sunset', offsetMinutes: 0 }, day, LA);
+    const early = resolveEndpoint({ kind: 'astro', event: 'sunset', offsetMinutes: -20 }, day, LA);
     expect(plain.ok && early.ok && plain.ordinal - early.ordinal).toBeCloseTo(20, 6);
   });
 
   it('assigns an instant to the solar day whose noon precedes it', () => {
-    const beforeNoon = DateTime.fromISO('2026-01-16T06:42', { zone: PORTLAND.timezone });
-    expect(solarDayContaining(beforeNoon, PORTLAND).anchorDate).toBe('2026-01-15');
-    const afterNoon = DateTime.fromISO('2026-01-16T19:30', { zone: PORTLAND.timezone });
-    expect(solarDayContaining(afterNoon, PORTLAND).anchorDate).toBe('2026-01-16');
+    const beforeNoon = DateTime.fromISO('2026-01-16T06:42', { zone: LA.timezone });
+    expect(solarDayContaining(beforeNoon, LA).anchorDate).toBe('2026-01-15');
+    const afterNoon = DateTime.fromISO('2026-01-16T19:30', { zone: LA.timezone });
+    expect(solarDayContaining(afterNoon, LA).anchorDate).toBe('2026-01-16');
   });
 
   it('survives a DST spring-forward night', () => {
     // 2026-03-08: clocks jump 02:00 -> 03:00 in America/Los_Angeles.
-    const dst = solarDay('2026-03-07', PORTLAND);
-    const r = resolveEndpoint({ kind: 'absolute', minutesOfDay: 6 * 60 }, dst, PORTLAND);
+    const dst = solarDay('2026-03-07', LA);
+    const r = resolveEndpoint({ kind: 'absolute', minutesOfDay: 6 * 60 }, dst, LA);
     expect(r.ok && r.at.toFormat('yyyy-MM-dd HH:mm')).toBe('2026-03-08 07:00');
   });
 

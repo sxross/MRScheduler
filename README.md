@@ -45,6 +45,9 @@ rather than embedding it, so the house keeps running whether or not anything is
 on screen. Firebase Realtime Database synchronises configuration between the
 daemon and the iOS client; it never executes anything.
 
+See [docs/STATUS.md](docs/STATUS.md) for current status, the decisions behind
+the model, and the open hardware question.
+
 ## Development
 
 ```

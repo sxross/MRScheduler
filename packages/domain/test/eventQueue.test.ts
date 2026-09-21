@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { DateTime } from 'luxon';
-import { buildEventQueue, desiredStateAt } from '../src/scheduling/eventQueue.js';
-import type { Schedule } from '../src/model/types.js';
-import { config, EVERY_DAY, FENCES, LA } from './fixtures.js';
+import { buildEventQueue, desiredStateAt } from '../src/scheduling/eventQueue';
+import type { Schedule } from '../src/model/types';
+import { config, EVERY_DAY, FENCES, LA } from './fixtures';
 
 const porchEvening: Schedule = {
   id: 'porchEvening',

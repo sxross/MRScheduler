@@ -11,11 +11,16 @@ that could reshape the product.
 **Built and pushed** (branch `claude/meross-scheduler-prd-edycrr`):
 
 - `packages/domain` — the pure TypeScript scheduling engine. PRD phases 1 and 2.
-  42 tests passing, typecheck clean, no dependency on React, Firebase, Meross or
-  any platform API.
+  42 tests, no dependency on React, Firebase, Meross or any platform API.
+- `packages/timeline` — pure timeline geometry, 13 tests. Depends on the domain,
+  knows nothing about rendering, so the arithmetic behind the chart is testable
+  without a simulator.
+- `apps/mobile` — Expo iOS client: timeline, upcoming events, schedule list with
+  enable/disable. Runs against an in-memory sample configuration. Typecheck
+  clean; **not yet run on a device**, so it is unverified visually.
 
 **Not started:** Firebase (phase 3), Meross transport (phase 4), Mac daemon
-(phase 5), React Native UI (phase 6).
+(phase 5). The iOS schedule and constraint editors (phase 6) are still to come.
 
 **Blocked on hardware:** the Meross transport. See section 5 — this is the one
 thing that could change the shape of the product, and it is unresolved.
@@ -82,6 +87,23 @@ silent:
 The one case clamping cannot handle is fences that would invert a cycle, leaving
 no time to run. That is reported as `blocked` with `collapsed: true` rather than
 wrapping into a near-24-hour ON.
+
+### The timeline is drawn noon to noon, not midnight to midnight
+
+PRD §15 sketches a 00–24 axis. The engine's day already runs noon to noon, and
+drawing it the same way means a dusk-to-sunrise cycle is one continuous bar with
+midnight in the centre, rather than two stumps clinging to opposite edges. It
+also puts the region that matters — dusk through dawn — in the middle of the
+screen. Worth a look on a device before it is settled.
+
+### React Native 0.87.1 needs the legacy type tree
+
+`apps/mobile/tsconfig.json` sets
+`customConditions: ["react-native-legacy-deep-imports", "react-native"]`. Without
+it, React Native resolves to its generated types, where the exported `ViewStyle`
+and `TextStyle` aliases collapse to empty types — `keyof TextStyle` contains
+neither `color` nor `fontSize` — and every `style={[styles.x, { color }]}` fails
+to compile. Revisit on the next React Native upgrade.
 
 ### Civil and nautical twilight are in V1
 

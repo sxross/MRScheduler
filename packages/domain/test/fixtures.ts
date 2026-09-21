@@ -1,4 +1,4 @@
-import type { Configuration, Schedule } from '../src/model/types.js';
+import type { Configuration, Schedule } from '../src/model/types';
 
 /** Los Angeles -- the deployment location. All twilight events occur year round. */
 export const LA = {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { describeDays, describeEndpoint, describeReason, describeSchedule } from '../src/scheduling/summary.js';
-import { EVERY_DAY } from './fixtures.js';
+import { describeDays, describeEndpoint, describeReason, describeSchedule } from '../src/scheduling/summary';
+import { EVERY_DAY } from './fixtures';
 
 describe('generated summaries', () => {
   it('describes astronomical endpoints in plain language', () => {

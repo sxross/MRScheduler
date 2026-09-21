@@ -5,16 +5,16 @@
  * Correctness over incremental patching.
  */
 import type { DateTime } from 'luxon';
-import type { Configuration } from '../model/types.js';
-import { solarDay, solarDayContaining, type SolarDay } from './solarDay.js';
+import type { Configuration } from '../model/types';
+import { solarDay, solarDayContaining, type SolarDay } from './solarDay';
 import {
   adjustmentsOf,
   mergeIntervals,
   resolveDay,
   type Adjustment,
   type ResolvedCycle,
-} from './resolver.js';
-import { describeReason } from './summary.js';
+} from './resolver';
+import { describeReason } from './summary';
 
 export type DesiredState = 'on' | 'off';
 

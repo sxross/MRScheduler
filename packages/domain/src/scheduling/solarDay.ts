@@ -13,8 +13,8 @@
  * A solar day is identified by the calendar date of the noon that starts it.
  */
 import { DateTime } from 'luxon';
-import type { Endpoint, Location } from '../model/types.js';
-import { astroTime } from './astronomical.js';
+import type { Endpoint, Location } from '../model/types';
+import { astroTime } from './astronomical';
 
 export const MINUTES_PER_DAY = 1440;
 const NOON = 720;

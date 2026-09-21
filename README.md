@@ -9,6 +9,9 @@ so the house keeps working when the Internet does not.
 ```
 packages/domain/     pure TypeScript scheduling engine -- no React, Firebase,
                      Meross or platform APIs, so it is testable in isolation
+packages/timeline/   pure timeline geometry: axis, bars, fences, clamp marks.
+                     Depends on the domain, knows nothing about rendering
+apps/mobile/         Expo iOS client. A thin painter over the two packages
 ```
 
 ## Key design decisions
@@ -55,3 +58,19 @@ npm install
 npm test
 npm run typecheck
 ```
+
+### Running the iOS app
+
+Requires a Mac with Xcode. The app uses a development build rather than Expo
+Go, because it needs native modules Expo Go does not bundle.
+
+```
+cd apps/mobile
+npx expo prebuild --platform ios   # once, generates the ios/ project
+npx expo run:ios                   # builds and launches
+npm start                          # subsequent runs
+```
+
+The app currently runs against an in-memory sample configuration
+(`src/state/sampleConfig.ts`). Firebase replaces that source later without the
+model changing.

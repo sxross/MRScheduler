@@ -12,8 +12,8 @@
  * the requested and effective times so the UI and diagnostics can show the
  * adjustment. Ad-hoc schedules are astronomically unaware and pass through.
  */
-import type { Constraints, Location, ScheduleKind, TransitionKind } from '../model/types.js';
-import { resolveEndpoint, type SolarDay } from './solarDay.js';
+import type { Constraints, Location, ScheduleKind, TransitionKind } from '../model/types';
+import { resolveEndpoint, type SolarDay } from './solarDay';
 
 export interface WindowBounds {
   from: number;

@@ -6,10 +6,10 @@
  * executable schedule requires it to be ON. No priority system.
  */
 import type { DateTime } from 'luxon';
-import type { Configuration, Schedule, ScheduleKind, Weekday } from '../model/types.js';
-import { WEEKDAYS } from '../model/types.js';
-import { MINUTES_PER_DAY, resolveEndpoint, type SolarDay } from './solarDay.js';
-import { evaluateTransition, type Verdict } from './constraints.js';
+import type { Configuration, Schedule, ScheduleKind, Weekday } from '../model/types';
+import { WEEKDAYS } from '../model/types';
+import { MINUTES_PER_DAY, resolveEndpoint, type SolarDay } from './solarDay';
+import { evaluateTransition, type Verdict } from './constraints';
 
 export interface CycleEdge {
   /** Where the user's rule puts this edge, before any fence is applied. */

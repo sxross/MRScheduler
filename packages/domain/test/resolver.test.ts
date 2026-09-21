@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { adjustmentsOf, mergeIntervals, resolveDay } from '../src/scheduling/resolver.js';
-import { solarDay } from '../src/scheduling/solarDay.js';
-import type { Schedule } from '../src/model/types.js';
-import { config, EVERY_DAY, FENCES, LA, TROMSO } from './fixtures.js';
+import { adjustmentsOf, mergeIntervals, resolveDay } from '../src/scheduling/resolver';
+import { solarDay } from '../src/scheduling/solarDay';
+import type { Schedule } from '../src/model/types';
+import { config, EVERY_DAY, FENCES, LA, TROMSO } from './fixtures';
 
 // 2026-01-15 is a Thursday; its solar day closes on Friday morning.
 const day = solarDay('2026-01-15', LA);

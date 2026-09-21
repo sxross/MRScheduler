@@ -1,0 +1,22 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "jsx": "react-jsx",
+
+    // React Native 0.87.1 resolves to its generated type tree by default, where
+    // the exported `ViewStyle` and `TextStyle` aliases collapse to empty types
+    // -- `keyof TextStyle` contains neither `color` nor `fontSize`, so every
+    // `style={[styles.x, { color }]}` is rejected. Selecting the legacy tree,
+    // which React Native still publishes under this export condition, restores
+    // the working definitions. Revisit when upgrading React Native.
+    "customConditions": ["react-native-legacy-deep-imports", "react-native"],
+
+    "paths": {
+      "@mrscheduler/domain": ["../../packages/domain/src/index.ts"],
+      "@mrscheduler/timeline": ["../../packages/timeline/src/index.ts"]
+    }
+  },
+  "include": ["App.tsx", "index.js", "src", "expo-env.d.ts"]
+}

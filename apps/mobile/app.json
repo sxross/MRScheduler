@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "MRScheduler",
+    "slug": "mrscheduler",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "mrscheduler",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.mrscheduler.app",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "MRScheduler talks to the scheduler running on your Mac over the local network."
+      }
+    },
+    "plugins": ["expo-dev-client"]
+  }
+}

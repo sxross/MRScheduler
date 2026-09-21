@@ -4,7 +4,7 @@
  */
 import SunCalc from 'suncalc';
 import { DateTime } from 'luxon';
-import type { AstroEventName, Location } from '../model/types.js';
+import type { AstroEventName, Location } from '../model/types';
 
 /** suncalc uses these exact property names; kept explicit so a rename is caught. */
 const SUNCALC_KEY: Record<AstroEventName, keyof SunCalc.GetTimesResult> = {

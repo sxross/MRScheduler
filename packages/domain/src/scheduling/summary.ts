@@ -2,8 +2,8 @@
  * Natural-language descriptions generated from the schedule model (PRD 35).
  * Never stored -- always derived, so a summary cannot drift from intent.
  */
-import type { AstroAnchor, Endpoint, Schedule, Weekday } from '../model/types.js';
-import { WEEKDAYS } from '../model/types.js';
+import type { AstroAnchor, Endpoint, Schedule, Weekday } from '../model/types';
+import { WEEKDAYS } from '../model/types';
 
 const EVENT_LABEL: Record<AstroAnchor['event'], string> = {
   sunrise: 'sunrise',

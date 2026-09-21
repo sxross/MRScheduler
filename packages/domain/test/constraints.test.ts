@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { effectiveOrdinal, evaluateTransition } from '../src/scheduling/constraints.js';
-import { resolveEndpoint, solarDay } from '../src/scheduling/solarDay.js';
-import type { Endpoint, ScheduleKind, TransitionKind } from '../src/model/types.js';
-import { FENCES, LA } from './fixtures.js';
+import { effectiveOrdinal, evaluateTransition } from '../src/scheduling/constraints';
+import { resolveEndpoint, solarDay } from '../src/scheduling/solarDay';
+import type { Endpoint, ScheduleKind, TransitionKind } from '../src/model/types';
+import { FENCES, LA } from './fixtures';
 
 // 2026-01-15 in Los Angeles: sunset 17:07, dusk 17:34, sunrise 06:59 (next day).
 // Fences: ON permitted [dusk, sunrise - 15m] = [335, 1124]

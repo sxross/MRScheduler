@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DateTime } from 'luxon';
-import { ordinalOf, resolveEndpoint, solarDay, solarDayContaining } from '../src/scheduling/solarDay.js';
-import { LA, TROMSO } from './fixtures.js';
+import { ordinalOf, resolveEndpoint, solarDay, solarDayContaining } from '../src/scheduling/solarDay';
+import { LA, TROMSO } from './fixtures';
 
 describe('the noon-origin axis', () => {
   const day = solarDay('2026-01-15', LA);

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { DateTime } from 'luxon';
@@ -56,6 +56,18 @@ function Screen({
 
         <Timeline config={config} anchorDate={anchorDate} />
 
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Add device"
+          style={({ pressed }) => [
+            styles.addDevice,
+            { borderColor: theme.border, backgroundColor: theme.surface, opacity: pressed ? 0.65 : 1 },
+          ]}
+        >
+          <Text style={[styles.addDevicePlus, { color: theme.accent }]}>＋</Text>
+          <Text style={[styles.addDeviceText, { color: theme.text }]}>Add device</Text>
+        </Pressable>
+
         <Text style={[styles.section, { color: theme.text }]}>Upcoming</Text>
         <UpcomingEvents config={config} now={now} />
 
@@ -74,5 +86,18 @@ const styles = StyleSheet.create({
   title: { fontSize: 30, fontWeight: '700' },
   subtitle: { fontSize: 13, marginTop: 2, marginBottom: 16 },
   section: { fontSize: 18, fontWeight: '600', marginTop: 28, marginBottom: 4 },
+  addDevice: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 9,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  addDevicePlus: { fontSize: 17, lineHeight: 18, fontWeight: '600' },
+  addDeviceText: { fontSize: 13, fontWeight: '600' },
   footer: { height: 48 },
 });

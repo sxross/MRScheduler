@@ -14,6 +14,10 @@
         "NSLocalNetworkUsageDescription": "MRScheduler talks to the scheduler running on your Mac over the local network."
       }
     },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
     "plugins": ["expo-dev-client"]
   }
 }

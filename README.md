@@ -127,3 +127,27 @@ npm start
 
 The app currently runs against `src/state/sampleConfig.ts`. Infrastructure
 replaces that source later without changing the scheduling model.
+
+### Web prototype
+
+The same React Native component tree can be run in a browser for fast UI
+iteration from a phone:
+
+```
+npm run web --workspace=@mrscheduler/mobile
+```
+
+A static production build is generated with:
+
+```
+npm run export:web --workspace=@mrscheduler/mobile
+```
+
+The output is `apps/mobile/dist`. `netlify.toml` at the repository root is
+configured to publish that directory. Connect the repository/branch to Netlify
+once; subsequent pushes can then produce a browser-visible prototype without an
+iOS rebuild.
+
+This web target is a prototyping surface, not a separate web application. Keep
+shared UI in React Native components so the browser prototype exercises the same
+component hierarchy as iOS.

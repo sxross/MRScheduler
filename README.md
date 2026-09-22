@@ -1,18 +1,67 @@
 # MRScheduler
 
-Astronomically-aware scheduling for Meross smart plugs. Schedules are stored as
+Astronomically-aware scheduling for local smart devices. Schedules are stored as
 intent (`sunset - 20m`), never as derived clock times, and are executed locally
 so the house keeps working when the Internet does not.
+
+The current reference hardware is **Shelly smart plugs**. Device communication is
+deliberately protocol-independent: Matter, local HTTP/RPC, MQTT, or another
+transport can be swapped without changing the scheduler or UI model.
+
+## Current phase: UI prototyping
+
+The current priority is validating the interaction model before attaching
+production infrastructure:
+
+1. timeline UX
+2. schedule editing UX
+3. astronomical constraint presentation
+4. governed vs. ad-hoc schedule behavior
+
+The mobile app intentionally runs against an in-memory sample configuration.
+Firebase, the Mac daemon, production persistence, and device commissioning/control
+are deferred until the UI and scheduling model stabilize.
 
 ## Layout
 
 ```
 packages/domain/     pure TypeScript scheduling engine -- no React, Firebase,
-                     Meross or platform APIs, so it is testable in isolation
+                     transport, vendor, or platform APIs
 packages/timeline/   pure timeline geometry: axis, bars, fences, clamp marks.
                      Depends on the domain, knows nothing about rendering
-apps/mobile/         Expo iOS client. A thin painter over the two packages
+apps/mobile/         Expo iOS UI prototype; a thin painter over the two packages
 ```
+
+## Device communication boundary
+
+MRScheduler owns a capability-oriented device interface. Neither the scheduling
+domain nor UI knows whether a device is reached through Matter, HTTP, MQTT, or
+another protocol.
+
+```
+Scheduling Domain
+       |
+       v
+DeviceController
+       |
+       v
+SmartDeviceTransport
+       |
+       +-- MatterTransport
+       +-- ShellyHttpTransport
+       +-- MqttTransport
+       +-- FutureTransport
+```
+
+Transports translate application-level operations such as `setPower(on)` and
+`getState()` into protocol-specific commands. Protocol details such as Matter
+clusters or Shelly RPC methods must not leak through this boundary.
+
+A device's persisted connection configuration selects the transport. Changing a
+device from Matter to local HTTP should be a configuration/adapter change, not a
+scheduler change.
+
+Shelly is the reference hardware, **not** an architectural dependency.
 
 ## Key design decisions
 
@@ -40,16 +89,21 @@ the effective time, and the event queue reports the adjustments it made. The one
 case that cannot be clamped -- where the fences would invert a cycle, leaving no
 time to run -- is reported as blocked rather than wrapped into a 24-hour ON.
 
-## Architecture
+## Intended runtime architecture
 
-The Mac runs a `launchd` daemon holding the scheduler, its local configuration
-cache and the Meross LAN transport. A GUI layers on top of it over a local API
-rather than embedding it, so the house keeps running whether or not anything is
-on screen. Firebase Realtime Database synchronises configuration between the
-daemon and the iOS client; it never executes anything.
+Once UI prototyping stabilizes, the Mac will run a `launchd` daemon holding the
+scheduler, local configuration cache, and device controller. A GUI layers on top
+over a local API rather than embedding the scheduler, so the house keeps running
+whether or not anything is on screen.
 
-See [docs/STATUS.md](docs/STATUS.md) for current status, the decisions behind
-the model, and the open hardware question.
+Firebase Realtime Database will synchronize configuration between the daemon and
+iOS; it will never execute device commands.
+
+The daemon will boot from a local configuration snapshot so Firebase or Internet
+availability is not required for an already-synchronized schedule.
+
+See [docs/STATUS.md](docs/STATUS.md) for the current project state and next steps.
+Historical Meross research is retained in [docs/history/MEROSS.md](docs/history/MEROSS.md).
 
 ## Development
 
@@ -61,16 +115,15 @@ npm run typecheck
 
 ### Running the iOS app
 
-Requires a Mac with Xcode. The app uses a development build rather than Expo
-Go, because it needs native modules Expo Go does not bundle.
+Requires a Mac with Xcode. The app uses a development build rather than Expo Go,
+because it needs native modules Expo Go does not bundle.
 
 ```
 cd apps/mobile
-npx expo prebuild --platform ios   # once, generates the ios/ project
-npx expo run:ios                   # builds and launches
-npm start                          # subsequent runs
+npx expo prebuild --platform ios
+npx expo run:ios
+npm start
 ```
 
-The app currently runs against an in-memory sample configuration
-(`src/state/sampleConfig.ts`). Firebase replaces that source later without the
-model changing.
+The app currently runs against `src/state/sampleConfig.ts`. Infrastructure
+replaces that source later without changing the scheduling model.

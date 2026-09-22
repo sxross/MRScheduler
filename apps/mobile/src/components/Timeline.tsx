@@ -14,8 +14,9 @@ import { useTheme } from '../theme';
 
 const BAR_HEIGHT = 16;
 const LABEL_GUTTER = 94;
-const HEADER_HEIGHT = 54;
-const ROW_HEIGHT = 50;
+const HEADER_HEIGHT = 50;
+const ROW_HEIGHT = 44;
+const HANDLE_RADIUS = 8;
 
 export function Timeline({
   config,
@@ -113,6 +114,38 @@ export function Timeline({
                         height={BAR_HEIGHT}
                         rx={BAR_HEIGHT / 2}
                         fill={theme.bar}
+                      />
+                      <Circle
+                        cx={bar.x - HANDLE_RADIUS + 1}
+                        cy={centerY}
+                        r={HANDLE_RADIUS}
+                        fill={theme.surface}
+                        stroke={theme.bar}
+                        strokeWidth={2.5}
+                      />
+                      <Line
+                        x1={bar.x - HANDLE_RADIUS + 1}
+                        y1={centerY - 3}
+                        x2={bar.x - HANDLE_RADIUS + 1}
+                        y2={centerY + 3}
+                        stroke={theme.bar}
+                        strokeWidth={1.5}
+                      />
+                      <Circle
+                        cx={bar.x + bar.width + HANDLE_RADIUS - 1}
+                        cy={centerY}
+                        r={HANDLE_RADIUS}
+                        fill={theme.surface}
+                        stroke={theme.bar}
+                        strokeWidth={2.5}
+                      />
+                      <Line
+                        x1={bar.x + bar.width + HANDLE_RADIUS - 1}
+                        y1={centerY - 3}
+                        x2={bar.x + bar.width + HANDLE_RADIUS - 1}
+                        y2={centerY + 3}
+                        stroke={theme.bar}
+                        strokeWidth={1.5}
                       />
                       {bar.continuesPast && (
                         <Rect

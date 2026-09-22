@@ -32,8 +32,8 @@ jobs:
 
       - name: Export React Native Web
         env:
-          EXPO_PUBLIC_BASE_URL: /MRScheduler
-        run: npm run export:web --workspace=@mrscheduler/mobile -- --base-url /MRScheduler
+          EXPO_BASE_URL: /MRScheduler
+        run: npm run export:web --workspace=@mrscheduler/mobile
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

@@ -16,8 +16,10 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static"
+      "output": "single"
     },
-    "plugins": ["expo-dev-client"]
+    "plugins": [
+      "expo-dev-client"
+    ]
   }
 }

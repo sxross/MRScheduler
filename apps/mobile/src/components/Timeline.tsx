@@ -115,38 +115,8 @@ export function Timeline({
                         rx={BAR_HEIGHT / 2}
                         fill={theme.bar}
                       />
-                      <Circle
-                        cx={bar.x - HANDLE_RADIUS + 1}
-                        cy={centerY}
-                        r={HANDLE_RADIUS}
-                        fill={theme.surface}
-                        stroke={theme.bar}
-                        strokeWidth={2.5}
-                      />
-                      <Line
-                        x1={bar.x - HANDLE_RADIUS + 1}
-                        y1={centerY - 3}
-                        x2={bar.x - HANDLE_RADIUS + 1}
-                        y2={centerY + 3}
-                        stroke={theme.bar}
-                        strokeWidth={1.5}
-                      />
-                      <Circle
-                        cx={bar.x + bar.width + HANDLE_RADIUS - 1}
-                        cy={centerY}
-                        r={HANDLE_RADIUS}
-                        fill={theme.surface}
-                        stroke={theme.bar}
-                        strokeWidth={2.5}
-                      />
-                      <Line
-                        x1={bar.x + bar.width + HANDLE_RADIUS - 1}
-                        y1={centerY - 3}
-                        x2={bar.x + bar.width + HANDLE_RADIUS - 1}
-                        y2={centerY + 3}
-                        stroke={theme.bar}
-                        strokeWidth={1.5}
-                      />
+                      <EndpointHandle x={bar.x - HANDLE_RADIUS + 1} y={centerY} theme={theme} />
+                      <EndpointHandle x={bar.x + bar.width + HANDLE_RADIUS - 1} y={centerY} theme={theme} />
                       {bar.continuesPast && (
                         <Rect
                           x={bar.x + bar.width - 6}
@@ -159,27 +129,28 @@ export function Timeline({
                     </G>
                   ))}
 
-                  {row.clamps.map((clamp, i) => (
-                    <G key={`clamp-${i}`}>
-                      <Line
-                        x1={clamp.requestedX}
-                        y1={centerY}
-                        x2={clamp.effectiveX}
-                        y2={centerY}
-                        stroke={theme.ghost}
-                        strokeWidth={1.5}
-                        strokeDasharray="3 3"
-                      />
-                      <Circle
-                        cx={clamp.requestedX}
-                        cy={centerY}
-                        r={3}
-                        stroke={theme.ghost}
-                        strokeWidth={1.5}
-                        fill={theme.surface}
-                      />
-                    </G>
-                  ))}
+                  {row.clamps.map((clamp, i) => {
+                    const markerY = centerY + BAR_HEIGHT / 2 + 8;
+                    return (
+                      <G key={`clamp-${i}`}>
+                        <Line
+                          x1={clamp.requestedX}
+                          y1={markerY}
+                          x2={clamp.effectiveX}
+                          y2={centerY + BAR_HEIGHT / 2}
+                          stroke={theme.ghost}
+                          strokeWidth={1}
+                          strokeDasharray="2 2"
+                        />
+                        <Circle
+                          cx={clamp.requestedX}
+                          cy={markerY}
+                          r={2.5}
+                          fill={theme.ghost}
+                        />
+                      </G>
+                    );
+                  })}
 
                   {row.blocked.length > 0 && (
                     <SvgText
@@ -207,6 +178,25 @@ export function Timeline({
         <Text style={[styles.legendText, { color: theme.textMuted }]}>Adjusted</Text>
       </View>
     </View>
+  );
+}
+
+
+function EndpointHandle({
+  x,
+  y,
+  theme,
+}: {
+  x: number;
+  y: number;
+  theme: ReturnType<typeof useTheme>;
+}) {
+  return (
+    <G>
+      <Circle cx={x} cy={y} r={HANDLE_RADIUS} fill={theme.surface} stroke={theme.bar} strokeWidth={2.5} />
+      <Line x1={x - 2} y1={y - 3} x2={x - 2} y2={y + 3} stroke={theme.bar} strokeWidth={1.25} />
+      <Line x1={x + 2} y1={y - 3} x2={x + 2} y2={y + 3} stroke={theme.bar} strokeWidth={1.25} />
+    </G>
   );
 }
 

@@ -29,8 +29,8 @@ const light: Theme = {
   night: 'rgba(60, 70, 120, 0.10)',
   gridline: '#e2e2e7',
   accent: '#3b5bdb',
-  bar: '#f0a202',
-  barMuted: 'rgba(240, 162, 2, 0.35)',
+  bar: '#b8864b',
+  barMuted: 'rgba(184, 134, 75, 0.28)',
   ghost: '#a1a1aa',
   warning: '#c92a2a',
 };
@@ -45,8 +45,8 @@ const dark: Theme = {
   night: 'rgba(120, 140, 220, 0.12)',
   gridline: '#2a2a32',
   accent: '#748ffc',
-  bar: '#f0a202',
-  barMuted: 'rgba(240, 162, 2, 0.30)',
+  bar: '#b8864b',
+  barMuted: 'rgba(184, 134, 75, 0.26)',
   ghost: '#5c5c66',
   warning: '#ff6b6b',
 };

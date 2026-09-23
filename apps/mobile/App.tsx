@@ -15,6 +15,19 @@ export default function App() {
   const now = useMemo(() => DateTime.now().setZone(sampleConfig.location.timezone), []);
   const anchorDate = solarDayContaining(now, config.location).anchorDate;
 
+  const trimSchedule = (scheduleId: string, edge: 'on' | 'off', minutesOfDay: number) =>
+    setConfig((previous) => {
+      const schedule = previous.schedules[scheduleId];
+      if (!schedule || schedule[edge].kind !== 'absolute') return previous;
+      return {
+        ...previous,
+        schedules: {
+          ...previous.schedules,
+          [scheduleId]: { ...schedule, [edge]: { kind: 'absolute', minutesOfDay } },
+        },
+      };
+    });
+
   const toggleSchedule = (scheduleId: string, enabled: boolean) =>
     setConfig((previous) => {
       const schedule = previous.schedules[scheduleId];
@@ -27,7 +40,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <Screen config={config} now={now} anchorDate={anchorDate} onToggle={toggleSchedule} />
+      <Screen config={config} now={now} anchorDate={anchorDate} onToggle={toggleSchedule} onTrim={trimSchedule} />
     </SafeAreaProvider>
   );
 }
@@ -37,11 +50,13 @@ function Screen({
   now,
   anchorDate,
   onToggle,
+  onTrim,
 }: {
   config: Configuration;
   now: DateTime;
   anchorDate: string;
   onToggle: (scheduleId: string, enabled: boolean) => void;
+  onTrim: (scheduleId: string, edge: 'on' | 'off', minutesOfDay: number) => void;
 }) {
   const theme = useTheme();
   const webSafeArea = Platform.OS === 'web'
@@ -59,7 +74,7 @@ function Screen({
           {DateTime.fromISO(anchorDate).toFormat('cccc d LLLL')} · noon to noon
         </Text>
 
-        <Timeline config={config} anchorDate={anchorDate} />
+        <Timeline config={config} anchorDate={anchorDate} onTrimSchedule={onTrim} />
 
         <Pressable
           accessibilityRole="button"

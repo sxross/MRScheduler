@@ -3,6 +3,7 @@ name: Deploy web prototype to GitHub Pages
 on:
   push:
     branches:
+      - main
       - claude/meross-scheduler-prd-edycrr
   workflow_dispatch:
 

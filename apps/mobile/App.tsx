@@ -69,7 +69,9 @@ function Screen({
         </Pressable>
 
         <Text style={[styles.section, { color: theme.text }]}>Upcoming</Text>
-        <UpcomingEvents config={config} now={now} />
+        <View style={styles.upcomingPreview}>
+          <UpcomingEvents config={config} now={now} />
+        </View>
 
         <Text style={[styles.section, { color: theme.text }]}>Schedules</Text>
         <ScheduleList config={config} onToggle={onToggle} />
@@ -99,5 +101,6 @@ const styles = StyleSheet.create({
   },
   addDevicePlus: { fontSize: 17, lineHeight: 18, fontWeight: '600' },
   addDeviceText: { fontSize: 13, fontWeight: '600' },
+  upcomingPreview: { maxHeight: 260, overflow: 'hidden' },
   footer: { height: 48 },
 });

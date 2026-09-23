@@ -159,17 +159,23 @@ export function buildTimeline(
     const bars: Bar[] = intervals
       .filter((i) => i.deviceId === device.id)
       .map((interval) => {
-        const end = Math.min(interval.end, MINUTES_PER_DAY);
-        const x = xOfOrdinal(interval.start, viewport);
+        // The visible timeline is one noon-to-noon solar day. Clip both edges
+        // to that viewport; keep the original labels/continuation flag so the
+        // authored interval can still be described accurately.
+        const visibleStart = Math.max(0, interval.start);
+        const visibleEnd = Math.min(interval.end, MINUTES_PER_DAY);
+        if (visibleEnd <= visibleStart) return null;
+        const x = xOfOrdinal(visibleStart, viewport);
         return {
           scheduleIds: [...interval.scheduleIds],
           x,
-          width: xOfOrdinal(end, viewport) - x,
+          width: xOfOrdinal(visibleEnd, viewport) - x,
           startLabel: clockLabel(interval.start),
           endLabel: clockLabel(interval.end),
           continuesPast: interval.end > MINUTES_PER_DAY,
         };
-      });
+      })
+      .filter((bar): bar is Bar => bar !== null);
 
     rows.push({
       deviceId: device.id,

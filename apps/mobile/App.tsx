@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { DateTime } from 'luxon';
 import { solarDayContaining, type Configuration } from '@mrscheduler/domain';
@@ -44,11 +44,17 @@ function Screen({
   onToggle: (scheduleId: string, enabled: boolean) => void;
 }) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const landscape = width > height;
+  const sidePadding = landscape
+    ? { paddingLeft: 16 + insets.left, paddingRight: 16 + insets.right }
+    : undefined;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]} edges={['top']}>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, sidePadding]}>
         <Text style={[styles.title, { color: theme.text }]}>Tonight</Text>
         <Text style={[styles.subtitle, { color: theme.textMuted }]}>
           {DateTime.fromISO(anchorDate).toFormat('cccc d LLLL')} · noon to noon

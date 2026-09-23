@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { DateTime } from 'luxon';
@@ -44,10 +44,16 @@ function Screen({
   onToggle: (scheduleId: string, enabled: boolean) => void;
 }) {
   const theme = useTheme();
+  const webSafeArea = Platform.OS === 'web'
+    ? ({
+        paddingLeft: 'max(16px, env(safe-area-inset-left))',
+        paddingRight: 'max(16px, env(safe-area-inset-right))',
+      } as any)
+    : undefined;
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, webSafeArea]}>
         <Text style={[styles.title, { color: theme.text }]}>Tonight</Text>
         <Text style={[styles.subtitle, { color: theme.textMuted }]}>
           {DateTime.fromISO(anchorDate).toFormat('cccc d LLLL')} · noon to noon

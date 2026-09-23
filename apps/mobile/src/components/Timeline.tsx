@@ -52,13 +52,12 @@ export function Timeline({
   const dusk = layout?.astro.find((a) => a.event === 'dusk');
   const dawn = layout?.astro.find((a) => a.event === 'dawn');
 
-  const horizontalInset = landscape ? Math.max(insets.left, insets.right) : 0;
   const trackViewportHeight = landscape
     ? Math.min(layout?.rows.length ? layout.rows.length * ROW_HEIGHT : 0, ROW_HEIGHT * 3.5)
     : Math.min(layout?.rows.length ? layout.rows.length * ROW_HEIGHT : 0, Math.max(ROW_HEIGHT * 4.5, Math.min(ROW_HEIGHT * 6.5, windowHeight * 0.34)));
 
   return (
-    <View style={{ marginHorizontal: horizontalInset }}>
+    <View>
       <View
         style={[styles.container, { backgroundColor: theme.surface, borderColor: theme.border }]}
         onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
@@ -97,11 +96,11 @@ export function Timeline({
                       {row.bars.map((bar, i) => {
                         const barKey = `${row.deviceId}:${bar.scheduleIds.join(',')}:${i}`;
                         const selected = selectedBar === barKey;
-                        const bx = Math.round(bar.x * 2) / 2;
-                        const bw = Math.max(Math.round(bar.width * 2) / 2, 2);
+                        const bx = Math.round(bar.x);
+                        const bw = Math.max(Math.round(bar.x + bar.width) - bx, 2);
                         return (
                           <G key={barKey} onPress={() => setSelectedBar(selected ? null : barKey)}>
-                            <Rect x={bx} y={barY} width={bw} height={BAR_HEIGHT} rx={2} fill={theme.bar} stroke={selected ? theme.text : 'none'} strokeWidth={selected ? 1.5 : 0} />
+                            <Rect x={bx} y={barY} width={bw} height={BAR_HEIGHT} fill={theme.bar} stroke={selected ? theme.text : 'none'} strokeWidth={selected ? 1.5 : 0} />
                             {selected && <>
                               <TrimHandle x={bx} y={centerY} theme={theme} />
                               <TrimHandle x={bx + bw} y={centerY} theme={theme} />

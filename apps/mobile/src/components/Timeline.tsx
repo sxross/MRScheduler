@@ -7,6 +7,7 @@
  */
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, G, Line, Rect, Text as SvgText } from 'react-native-svg';
 import type { Configuration } from '@mrscheduler/domain';
 import { DEFAULT_VIEWPORT, buildTimeline, type Viewport } from '@mrscheduler/timeline';
@@ -29,6 +30,7 @@ export function Timeline({
 }) {
   const theme = useTheme();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const landscape = windowWidth > windowHeight;
   const [width, setWidth] = useState(0);
   const [selectedBar, setSelectedBar] = useState<string | null>(null);
@@ -50,8 +52,13 @@ export function Timeline({
   const dusk = layout?.astro.find((a) => a.event === 'dusk');
   const dawn = layout?.astro.find((a) => a.event === 'dawn');
 
+  const horizontalInset = landscape ? Math.max(insets.left, insets.right) : 0;
+  const trackViewportHeight = landscape
+    ? Math.min(layout?.rows.length ? layout.rows.length * ROW_HEIGHT : 0, ROW_HEIGHT * 3.5)
+    : Math.min(layout?.rows.length ? layout.rows.length * ROW_HEIGHT : 0, Math.max(ROW_HEIGHT * 4.5, Math.min(ROW_HEIGHT * 6.5, windowHeight * 0.34)));
+
   return (
-    <View>
+    <View style={{ marginHorizontal: horizontalInset }}>
       <View
         style={[styles.container, { backgroundColor: theme.surface, borderColor: theme.border }]}
         onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
@@ -71,9 +78,10 @@ export function Timeline({
               {sunrise && <AstroBoundary x={sunrise.x} label="Sunrise" time={sunrise.time} theme={theme} anchor="start" />}
             </Svg>
             <ScrollView
-              style={{ height: Math.min(layout.rows.length * ROW_HEIGHT, landscape ? ROW_HEIGHT * 4.5 : ROW_HEIGHT * 6.5) }}
+              style={{ height: trackViewportHeight }}
               nestedScrollEnabled
-              showsVerticalScrollIndicator={layout.rows.length > (landscape ? 4 : 6)}
+              showsVerticalScrollIndicator
+              persistentScrollbar={false}
             >
               <Svg width={layout.width} height={layout.rows.length * ROW_HEIGHT}>
                 {dusk && dawn && <Rect x={dusk.x} y={0} width={dawn.x - dusk.x} height={layout.rows.length * ROW_HEIGHT} fill={theme.night} />}

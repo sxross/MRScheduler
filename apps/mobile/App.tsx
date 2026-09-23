@@ -70,9 +70,12 @@ function Screen({
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
       <ScrollView contentContainerStyle={[styles.content, webSafeArea]}>
         <Text style={[styles.title, { color: theme.text }]}>Tonight</Text>
-        <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-          {DateTime.fromISO(anchorDate).toFormat('cccc d LLLL')} · noon to noon
-        </Text>
+        <View style={styles.subtitleRow}>
+          <Text style={[styles.subtitle, { color: theme.textMuted }]}>
+            {DateTime.fromISO(anchorDate).toFormat('cccc d LLLL')} · noon to noon
+          </Text>
+          <Text style={[styles.build, { color: theme.textMuted }]}>3db4b68</Text>
+        </View>
 
         <Timeline config={config} anchorDate={anchorDate} onTrimSchedule={onTrim} />
 
@@ -106,7 +109,9 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   content: { padding: 16 },
   title: { fontSize: 30, fontWeight: '700' },
-  subtitle: { fontSize: 13, marginTop: 2, marginBottom: 16 },
+  subtitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2, marginBottom: 16 },
+  subtitle: { fontSize: 13 },
+  build: { fontSize: 10, fontFamily: 'monospace', opacity: 0.7 },
   section: { fontSize: 18, fontWeight: '600', marginTop: 28, marginBottom: 4 },
   addDevice: {
     alignSelf: 'flex-start',

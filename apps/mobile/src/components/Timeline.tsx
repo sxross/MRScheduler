@@ -6,7 +6,7 @@
  * in diagnostics/editing, not as unexplained decorative bars.
  */
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { Circle, G, Line, Rect, Text as SvgText } from 'react-native-svg';
 import type { Configuration } from '@mrscheduler/domain';
 import { DEFAULT_VIEWPORT, buildTimeline, type Viewport } from '@mrscheduler/timeline';
@@ -28,6 +28,8 @@ export function Timeline({
   onSelectDevice?: (deviceId: string) => void;
 }) {
   const theme = useTheme();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const landscape = windowWidth > windowHeight;
   const [width, setWidth] = useState(0);
   const [selectedBar, setSelectedBar] = useState<string | null>(null);
 
@@ -55,139 +57,65 @@ export function Timeline({
         onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
       >
         {layout && (
-          <Svg width={layout.width} height={layout.height}>
-            {dusk && dawn && (
-              <Rect x={dusk.x} y={HEADER_HEIGHT} width={dawn.x - dusk.x} height={layout.height - HEADER_HEIGHT} fill={theme.night} />
-            )}
-
-            {layout.ticks.map((tick, i) => (
-              <G key={`tick-${i}`}>
-                <Line
-                  x1={tick.x}
-                  y1={HEADER_HEIGHT - 8}
-                  x2={tick.x}
-                  y2={layout.height}
-                  stroke={theme.gridline}
-                  strokeWidth={tick.major ? 1 : StyleSheet.hairlineWidth}
-                />
-                <SvgText
-                  x={tick.x}
-                  y={16}
-                  fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
-                  fontSize={10}
-                  fill={theme.textMuted}
-                  textAnchor={i === 0 ? 'start' : i === layout.ticks.length - 1 ? 'end' : 'middle'}
-                >
-                  {shortTime(tick.label)}
-                </SvgText>
-              </G>
-            ))}
-
-            {sunset && (
-              <AstroBoundary x={sunset.x} label="Sunset" time={sunset.time} theme={theme} anchor="end" />
-            )}
-            {sunrise && (
-              <AstroBoundary x={sunrise.x} label="Sunrise" time={sunrise.time} theme={theme} anchor="start" />
-            )}
-
-            {layout.rows.map((row) => {
-              const centerY = row.y + row.height / 2;
-              const barY = centerY - BAR_HEIGHT / 2;
-              return (
-                <G key={row.deviceId} onPress={() => onSelectDevice?.(row.deviceId)}>
-                  <SvgText
-                    x={14}
-                    y={centerY + 4}
-                    fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
-                    fontSize={12}
-                    fontWeight="600"
-                    fill={theme.text}
-                  >
-                    {row.name}
+          <>
+            <Svg width={layout.width} height={HEADER_HEIGHT}>
+              {layout.ticks.map((tick, i) => (
+                <G key={`head-tick-${i}`}>
+                  <Line x1={tick.x} y1={HEADER_HEIGHT - 8} x2={tick.x} y2={HEADER_HEIGHT} stroke={theme.gridline} strokeWidth={tick.major ? 1 : StyleSheet.hairlineWidth} />
+                  <SvgText x={tick.x} y={16} fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize={10} fill={theme.textMuted} textAnchor={i === 0 ? 'start' : i === layout.ticks.length - 1 ? 'end' : 'middle'}>
+                    {shortTime(tick.label)}
                   </SvgText>
-
-                  {row.bars.map((bar, i) => {
-                    const barKey = `${row.deviceId}:${bar.scheduleIds.join(',')}:${i}`;
-                    const selected = selectedBar === barKey;
-                    return (
-                      <G key={barKey} onPress={() => setSelectedBar(selected ? null : barKey)}>
-                        <Rect
-                          x={bar.x}
-                          y={barY}
-                          width={Math.max(bar.width, 2)}
-                          height={BAR_HEIGHT}
-                          rx={3}
-                          fill={theme.bar}
-                          stroke={selected ? theme.text : 'none'}
-                          strokeWidth={selected ? 1.5 : 0}
-                        />
-                        {selected && (
-                          <>
-                            <TrimHandle x={bar.x} y={centerY} theme={theme} />
-                            <TrimHandle x={bar.x + bar.width} y={centerY} theme={theme} />
-                            <SvgText
-                              x={bar.x + 4}
-                              y={barY - 6}
-                              fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
-                              fontSize={10}
-                              fontWeight="600"
-                              fill={theme.text}
-                            >
-                              {shortTime(bar.startLabel)} → {shortTime(bar.endLabel)}
-                            </SvgText>
-                          </>
-                        )}
-                        {bar.continuesPast && (
-                          <Rect
-                            x={bar.x + bar.width - 4}
-                            y={barY}
-                            width={4}
-                            height={BAR_HEIGHT}
-                            fill={theme.barMuted}
-                          />
-                        )}
-                      </G>
-                    );
-                  })}
-
-                  {row.clamps.map((clamp, i) => {
-                    const markerY = centerY + BAR_HEIGHT / 2 + 8;
-                    return (
-                      <G key={`clamp-${i}`}>
-                        <Line
-                          x1={clamp.requestedX}
-                          y1={markerY}
-                          x2={clamp.effectiveX}
-                          y2={centerY + BAR_HEIGHT / 2}
-                          stroke={theme.ghost}
-                          strokeWidth={1}
-                          strokeDasharray="2 2"
-                        />
-                        <Circle
-                          cx={clamp.requestedX}
-                          cy={markerY}
-                          r={2.5}
-                          fill={theme.ghost}
-                        />
-                      </G>
-                    );
-                  })}
-
-                  {row.blocked.length > 0 && (
-                    <SvgText
-                      x={LABEL_GUTTER}
-                      y={centerY + 4}
-                      fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
-                      fontSize={11}
-                      fill={theme.warning}
-                    >
-                      Cannot run today
-                    </SvgText>
-                  )}
                 </G>
-              );
-            })}
-          </Svg>
+              ))}
+              {sunset && <AstroBoundary x={sunset.x} label="Sunset" time={sunset.time} theme={theme} anchor="end" />}
+              {sunrise && <AstroBoundary x={sunrise.x} label="Sunrise" time={sunrise.time} theme={theme} anchor="start" />}
+            </Svg>
+            <ScrollView
+              style={{ height: Math.min(layout.rows.length * ROW_HEIGHT, landscape ? ROW_HEIGHT * 4.5 : ROW_HEIGHT * 6.5) }}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator={layout.rows.length > (landscape ? 4 : 6)}
+            >
+              <Svg width={layout.width} height={layout.rows.length * ROW_HEIGHT}>
+                {dusk && dawn && <Rect x={dusk.x} y={0} width={dawn.x - dusk.x} height={layout.rows.length * ROW_HEIGHT} fill={theme.night} />}
+                {layout.ticks.map((tick, i) => (
+                  <Line key={`body-tick-${i}`} x1={tick.x} y1={0} x2={tick.x} y2={layout.rows.length * ROW_HEIGHT} stroke={theme.gridline} strokeWidth={tick.major ? 1 : StyleSheet.hairlineWidth} />
+                ))}
+                {layout.rows.map((row) => {
+                  const centerY = row.y - HEADER_HEIGHT + row.height / 2;
+                  const barY = centerY - BAR_HEIGHT / 2;
+                  return (
+                    <G key={row.deviceId} onPress={() => onSelectDevice?.(row.deviceId)}>
+                      <SvgText x={14} y={centerY + 4} fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize={12} fontWeight="600" fill={theme.text}>{row.name}</SvgText>
+                      {row.bars.map((bar, i) => {
+                        const barKey = `${row.deviceId}:${bar.scheduleIds.join(',')}:${i}`;
+                        const selected = selectedBar === barKey;
+                        const bx = Math.round(bar.x * 2) / 2;
+                        const bw = Math.max(Math.round(bar.width * 2) / 2, 2);
+                        return (
+                          <G key={barKey} onPress={() => setSelectedBar(selected ? null : barKey)}>
+                            <Rect x={bx} y={barY} width={bw} height={BAR_HEIGHT} rx={2} fill={theme.bar} stroke={selected ? theme.text : 'none'} strokeWidth={selected ? 1.5 : 0} />
+                            {selected && <>
+                              <TrimHandle x={bx} y={centerY} theme={theme} />
+                              <TrimHandle x={bx + bw} y={centerY} theme={theme} />
+                              <SvgText x={bx + 4} y={barY - 6} fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize={10} fontWeight="600" fill={theme.text}>{shortTime(bar.startLabel)} → {shortTime(bar.endLabel)}</SvgText>
+                            </>}
+                          </G>
+                        );
+                      })}
+                      {row.clamps.map((clamp, i) => {
+                        const markerY = centerY + BAR_HEIGHT / 2 + 8;
+                        return <G key={`clamp-${i}`}>
+                          <Line x1={clamp.requestedX} y1={markerY} x2={clamp.effectiveX} y2={centerY + BAR_HEIGHT / 2} stroke={theme.ghost} strokeWidth={1} strokeDasharray="2 2" />
+                          <Circle cx={clamp.requestedX} cy={markerY} r={2.5} fill={theme.ghost} />
+                        </G>;
+                      })}
+                      {row.blocked.length > 0 && <SvgText x={LABEL_GUTTER} y={centerY + 4} fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize={11} fill={theme.warning}>Cannot run today</SvgText>}
+                    </G>
+                  );
+                })}
+              </Svg>
+            </ScrollView>
+          </>
         )}
       </View>
       <View style={styles.legend}>

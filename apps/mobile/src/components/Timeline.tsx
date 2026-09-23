@@ -29,6 +29,7 @@ export function Timeline({
 }) {
   const theme = useTheme();
   const [width, setWidth] = useState(0);
+  const [selectedBar, setSelectedBar] = useState<string | null>(null);
 
   const viewport: Viewport = {
     ...DEFAULT_VIEWPORT,
@@ -105,29 +106,49 @@ export function Timeline({
                     {row.name}
                   </SvgText>
 
-                  {row.bars.map((bar, i) => (
-                    <G key={`bar-${i}`}>
-                      <Rect
-                        x={bar.x}
-                        y={barY}
-                        width={Math.max(bar.width, 2)}
-                        height={BAR_HEIGHT}
-                        rx={BAR_HEIGHT / 2}
-                        fill={theme.bar}
-                      />
-                      <EndpointHandle x={bar.x - HANDLE_RADIUS + 1} y={centerY} theme={theme} />
-                      <EndpointHandle x={bar.x + bar.width + HANDLE_RADIUS - 1} y={centerY} theme={theme} />
-                      {bar.continuesPast && (
+                  {row.bars.map((bar, i) => {
+                    const barKey = `${row.deviceId}:${bar.scheduleIds.join(',')}:${i}`;
+                    const selected = selectedBar === barKey;
+                    return (
+                      <G key={barKey} onPress={() => setSelectedBar(selected ? null : barKey)}>
                         <Rect
-                          x={bar.x + bar.width - 6}
+                          x={bar.x}
                           y={barY}
-                          width={6}
+                          width={Math.max(bar.width, 2)}
                           height={BAR_HEIGHT}
-                          fill={theme.barMuted}
+                          rx={3}
+                          fill={theme.bar}
+                          stroke={selected ? theme.text : 'none'}
+                          strokeWidth={selected ? 1.5 : 0}
                         />
-                      )}
-                    </G>
-                  ))}
+                        {selected && (
+                          <>
+                            <TrimHandle x={bar.x} y={centerY} theme={theme} />
+                            <TrimHandle x={bar.x + bar.width} y={centerY} theme={theme} />
+                            <SvgText
+                              x={bar.x + 4}
+                              y={barY - 6}
+                              fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+                              fontSize={10}
+                              fontWeight="600"
+                              fill={theme.text}
+                            >
+                              {shortTime(bar.startLabel)} → {shortTime(bar.endLabel)}
+                            </SvgText>
+                          </>
+                        )}
+                        {bar.continuesPast && (
+                          <Rect
+                            x={bar.x + bar.width - 4}
+                            y={barY}
+                            width={4}
+                            height={BAR_HEIGHT}
+                            fill={theme.barMuted}
+                          />
+                        )}
+                      </G>
+                    );
+                  })}
 
                   {row.clamps.map((clamp, i) => {
                     const markerY = centerY + BAR_HEIGHT / 2 + 8;
@@ -182,7 +203,7 @@ export function Timeline({
 }
 
 
-function EndpointHandle({
+function TrimHandle({
   x,
   y,
   theme,
@@ -193,9 +214,8 @@ function EndpointHandle({
 }) {
   return (
     <G>
-      <Circle cx={x} cy={y} r={HANDLE_RADIUS} fill={theme.surface} stroke={theme.bar} strokeWidth={2.5} />
-      <Line x1={x - 2} y1={y - 3} x2={x - 2} y2={y + 3} stroke={theme.bar} strokeWidth={1.25} />
-      <Line x1={x + 2} y1={y - 3} x2={x + 2} y2={y + 3} stroke={theme.bar} strokeWidth={1.25} />
+      <Rect x={x - 4} y={y - BAR_HEIGHT / 2 - 3} width={8} height={BAR_HEIGHT + 6} rx={2} fill={theme.surface} stroke={theme.bar} strokeWidth={2} />
+      <Line x1={x} y1={y - 4} x2={x} y2={y + 4} stroke={theme.bar} strokeWidth={1.5} />
     </G>
   );
 }

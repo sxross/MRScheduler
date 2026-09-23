@@ -5,7 +5,7 @@
  * primary; astronomical boundaries are secondary. Constraint details belong
  * in diagnostics/editing, not as unexplained decorative bars.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { G, Line, Rect, Text as SvgText } from 'react-native-svg';
 import type { Configuration } from '@mrscheduler/domain';
@@ -144,29 +144,29 @@ function TrimHandle({
   theme: ReturnType<typeof useTheme>;
   onDrag?: (x: number, done: boolean) => void;
 }) {
-  const drag = { active: false, startClientX: 0, originX: x };
+  const drag = useRef({ active: false, startClientX: 0, originX: x });
   const pointerProps = onDrag ? ({
     onPointerDown: (event: any) => {
-      drag.active = true;
-      drag.startClientX = event.nativeEvent?.clientX ?? event.clientX ?? 0;
-      drag.originX = x;
+      drag.current.active = true;
+      drag.current.startClientX = event.nativeEvent?.clientX ?? event.clientX ?? 0;
+      drag.current.originX = x;
       event.currentTarget?.setPointerCapture?.(event.nativeEvent?.pointerId ?? event.pointerId);
       event.preventDefault?.();
     },
     onPointerMove: (event: any) => {
-      if (!drag.active) return;
-      const clientX = event.nativeEvent?.clientX ?? event.clientX ?? drag.startClientX;
-      onDrag(drag.originX + clientX - drag.startClientX, false);
+      if (!drag.current.active) return;
+      const clientX = event.nativeEvent?.clientX ?? event.clientX ?? drag.current.startClientX;
+      onDrag(drag.current.originX + clientX - drag.current.startClientX, false);
       event.preventDefault?.();
     },
     onPointerUp: (event: any) => {
-      if (!drag.active) return;
-      const clientX = event.nativeEvent?.clientX ?? event.clientX ?? drag.startClientX;
-      drag.active = false;
-      onDrag(drag.originX + clientX - drag.startClientX, true);
+      if (!drag.current.active) return;
+      const clientX = event.nativeEvent?.clientX ?? event.clientX ?? drag.current.startClientX;
+      drag.current.active = false;
+      onDrag(drag.current.originX + clientX - drag.current.startClientX, true);
       event.preventDefault?.();
     },
-    onPointerCancel: () => { drag.active = false; },
+    onPointerCancel: () => { drag.current.active = false; },
   } as any) : {};
   return (
     <G {...pointerProps}>

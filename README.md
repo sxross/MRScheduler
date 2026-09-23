@@ -151,3 +151,5 @@ iOS rebuild.
 This web target is a prototyping surface, not a separate web application. Keep
 shared UI in React Native components so the browser prototype exercises the same
 component hierarchy as iOS.
+
+<!-- Trigger GitHub Pages deployment after enabling Actions-based Pages. -->

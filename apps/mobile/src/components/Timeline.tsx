@@ -6,7 +6,7 @@
  * in diagnostics/editing, not as unexplained decorative bars.
  */
 import { useMemo, useState } from 'react';
-import { PanResponder, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { G, Line, Rect, Text as SvgText } from 'react-native-svg';
 import type { Configuration } from '@mrscheduler/domain';
 import { DEFAULT_VIEWPORT, buildTimeline, ordinalAtX, snap, type Viewport } from '@mrscheduler/timeline';
@@ -144,16 +144,26 @@ function TrimHandle({
   theme: ReturnType<typeof useTheme>;
   onDrag?: (x: number, done: boolean) => void;
 }) {
-  const responder = PanResponder.create({
-    onStartShouldSetPanResponder: () => !!onDrag,
-    onMoveShouldSetPanResponder: () => !!onDrag,
-    onPanResponderMove: (_event, gesture) => onDrag?.(x + gesture.dx, false),
-    onPanResponderRelease: (_event, gesture) => onDrag?.(x + gesture.dx, true),
-    onPanResponderTerminate: (_event, gesture) => onDrag?.(x + gesture.dx, true),
-  });
+  let startClientX = 0;
+  const pointerProps = onDrag ? ({
+    onPointerDown: (event: any) => {
+      startClientX = event.nativeEvent?.clientX ?? event.clientX ?? 0;
+      event.currentTarget?.setPointerCapture?.(event.nativeEvent?.pointerId ?? event.pointerId);
+    },
+    onPointerMove: (event: any) => {
+      const buttons = event.nativeEvent?.buttons ?? event.buttons;
+      if (!buttons) return;
+      const clientX = event.nativeEvent?.clientX ?? event.clientX ?? startClientX;
+      onDrag(x + clientX - startClientX, false);
+    },
+    onPointerUp: (event: any) => {
+      const clientX = event.nativeEvent?.clientX ?? event.clientX ?? startClientX;
+      onDrag(x + clientX - startClientX, true);
+    },
+  } as any) : {};
   return (
-    <G {...responder.panHandlers}>
-      <Rect x={x - 10} y={y - BAR_HEIGHT} width={20} height={BAR_HEIGHT * 2} fill="transparent" />
+    <G {...pointerProps}>
+      <Rect x={x - 12} y={y - BAR_HEIGHT} width={24} height={BAR_HEIGHT * 2} fill="transparent" pointerEvents="all" />
       <Rect x={x - 4} y={y - BAR_HEIGHT / 2 - 3} width={8} height={BAR_HEIGHT + 6} rx={2} fill={theme.surface} stroke={theme.bar} strokeWidth={2} />
       <Line x1={x} y1={y - 4} x2={x} y2={y + 4} stroke={theme.bar} strokeWidth={1.5} />
     </G>

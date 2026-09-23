@@ -35,7 +35,7 @@ export function Timeline({
   const [width, setWidth] = useState(0);
   const [selectedBar, setSelectedBar] = useState<string | null>(null);
   const [dragPreview, setDragPreview] = useState<{ barKey: string; edge: 'on' | 'off'; x: number; label: string } | null>(null);
-  const [editedEdges, setEditedEdges] = useState<Record<string, { on?: { x: number; label: string }; off?: { x: number; label: string } }>>({});
+  const [editedEdges, setEditedEdges] = useState<Record<string, { on?: { ordinal: number; label: string }; off?: { ordinal: number; label: string } }>>({});
 
   const viewport: Viewport = {
     ...DEFAULT_VIEWPORT,
@@ -102,8 +102,9 @@ export function Timeline({
                         const baseRight = Math.round(bar.x + bar.width);
                         const preview = dragPreview?.barKey === barKey ? dragPreview : null;
                         const edited = editedEdges[barKey];
-                        const left = preview?.edge === 'on' ? preview.x : edited?.on?.x ?? baseLeft;
-                        const right = preview?.edge === 'off' ? preview.x : edited?.off?.x ?? baseRight;
+                        const xOfEditedOrdinal = (ordinal: number) => viewport.padding + (ordinal / 1440) * (viewport.width - viewport.padding * 2);
+                        const left = preview?.edge === 'on' ? preview.x : edited?.on ? xOfEditedOrdinal(edited.on.ordinal) : baseLeft;
+                        const right = preview?.edge === 'off' ? preview.x : edited?.off ? xOfEditedOrdinal(edited.off.ordinal) : baseRight;
                         const bx = Math.min(left, right - 2);
                         const bw = Math.max(right - bx, 2);
                         const startLabel = preview?.edge === 'on' ? preview.label : edited?.on?.label ?? shortTime(bar.startLabel);
@@ -192,7 +193,7 @@ function previewTrim(
   x: number,
   viewport: Viewport,
   setPreview: (value: { barKey: string; edge: 'on' | 'off'; x: number; label: string } | null) => void,
-  setEdited: Dispatch<SetStateAction<Record<string, { on?: { x: number; label: string }; off?: { x: number; label: string } }>>>,
+  setEdited: Dispatch<SetStateAction<Record<string, { on?: { ordinal: number; label: string }; off?: { ordinal: number; label: string } }>>>,
   commit?: (scheduleId: string, edge: 'on' | 'off', minutesOfDay: number) => void,
 ) {
   const rawOrdinal = ordinalAtX(x, viewport);
@@ -207,7 +208,7 @@ function previewTrim(
     if (done) {
       setEdited((previous) => ({
         ...previous,
-        [barKey]: { ...previous[barKey], [edge]: { x: snappedX, label } },
+        [barKey]: { ...previous[barKey], [edge]: { ordinal, label } },
       }));
       commit?.(scheduleId, edge, minutesOfDay);
       setPreview(null);

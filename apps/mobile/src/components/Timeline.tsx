@@ -5,7 +5,7 @@
  * primary; astronomical boundaries are secondary. Constraint details belong
  * in diagnostics/editing, not as unexplained decorative bars.
  */
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { G, Line, Rect, Text as SvgText } from 'react-native-svg';
 import type { Configuration } from '@mrscheduler/domain';
@@ -35,6 +35,7 @@ export function Timeline({
   const [width, setWidth] = useState(0);
   const [selectedBar, setSelectedBar] = useState<string | null>(null);
   const [dragPreview, setDragPreview] = useState<{ barKey: string; edge: 'on' | 'off'; x: number; label: string } | null>(null);
+  const [editedEdges, setEditedEdges] = useState<Record<string, { on?: { x: number; label: string }; off?: { x: number; label: string } }>>({});
 
   const viewport: Viewport = {
     ...DEFAULT_VIEWPORT,
@@ -100,18 +101,19 @@ export function Timeline({
                         const baseLeft = Math.round(bar.x);
                         const baseRight = Math.round(bar.x + bar.width);
                         const preview = dragPreview?.barKey === barKey ? dragPreview : null;
-                        const left = preview?.edge === 'on' ? preview.x : baseLeft;
-                        const right = preview?.edge === 'off' ? preview.x : baseRight;
+                        const edited = editedEdges[barKey];
+                        const left = preview?.edge === 'on' ? preview.x : edited?.on?.x ?? baseLeft;
+                        const right = preview?.edge === 'off' ? preview.x : edited?.off?.x ?? baseRight;
                         const bx = Math.min(left, right - 2);
                         const bw = Math.max(right - bx, 2);
-                        const startLabel = preview?.edge === 'on' ? preview.label : shortTime(bar.startLabel);
-                        const endLabel = preview?.edge === 'off' ? preview.label : shortTime(bar.endLabel);
+                        const startLabel = preview?.edge === 'on' ? preview.label : edited?.on?.label ?? shortTime(bar.startLabel);
+                        const endLabel = preview?.edge === 'off' ? preview.label : edited?.off?.label ?? shortTime(bar.endLabel);
                         return (
                           <G key={barKey}>
                             <Rect x={bx} y={barY} width={bw} height={BAR_HEIGHT} fill={theme.bar} stroke={selected ? theme.text : 'none'} strokeWidth={selected ? 1.5 : 0} onPress={() => setSelectedBar(selected ? null : barKey)} />
                             {selected && <>
-                              <TrimHandle x={bx} y={centerY} theme={theme} onDrag={bar.scheduleIds.length === 1 ? (x, done) => previewTrim(barKey, bar.scheduleIds[0], 'on', x, viewport, setDragPreview, onTrimSchedule)(done) : undefined} />
-                              <TrimHandle x={bx + bw} y={centerY} theme={theme} onDrag={bar.scheduleIds.length === 1 ? (x, done) => previewTrim(barKey, bar.scheduleIds[0], 'off', x, viewport, setDragPreview, onTrimSchedule)(done) : undefined} />
+                              <TrimHandle x={bx} y={centerY} theme={theme} onDrag={bar.scheduleIds.length === 1 ? (x, done) => previewTrim(barKey, bar.scheduleIds[0], 'on', x, viewport, setDragPreview, setEditedEdges, onTrimSchedule)(done) : undefined} />
+                              <TrimHandle x={bx + bw} y={centerY} theme={theme} onDrag={bar.scheduleIds.length === 1 ? (x, done) => previewTrim(barKey, bar.scheduleIds[0], 'off', x, viewport, setDragPreview, setEditedEdges, onTrimSchedule)(done) : undefined} />
                               <SvgText x={bx + 4} y={barY - 6} fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize={10} fontWeight="600" fill={theme.text}>{startLabel} → {endLabel}</SvgText>
                             </>}
                           </G>
@@ -190,6 +192,7 @@ function previewTrim(
   x: number,
   viewport: Viewport,
   setPreview: (value: { barKey: string; edge: 'on' | 'off'; x: number; label: string } | null) => void,
+  setEdited: Dispatch<SetStateAction<Record<string, { on?: { x: number; label: string }; off?: { x: number; label: string } }>>>,
   commit?: (scheduleId: string, edge: 'on' | 'off', minutesOfDay: number) => void,
 ) {
   const rawOrdinal = ordinalAtX(x, viewport);
@@ -202,6 +205,10 @@ function previewTrim(
   setPreview({ barKey, edge, x: snappedX, label });
   return (done: boolean) => {
     if (done) {
+      setEdited((previous) => ({
+        ...previous,
+        [barKey]: { ...previous[barKey], [edge]: { x: snappedX, label } },
+      }));
       commit?.(scheduleId, edge, minutesOfDay);
       setPreview(null);
     }

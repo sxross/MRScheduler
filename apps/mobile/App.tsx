@@ -19,11 +19,15 @@ export default function App() {
     setConfig((previous) => {
       const schedule = previous.schedules[scheduleId];
       if (!schedule || schedule[edge].kind !== 'absolute') return previous;
+      const updatedSchedule = {
+        ...schedule,
+        [edge]: { kind: 'absolute' as const, minutesOfDay },
+      };
       return {
         ...previous,
         schedules: {
           ...previous.schedules,
-          [scheduleId]: { ...schedule, [edge]: { kind: 'absolute', minutesOfDay } },
+          [scheduleId]: updatedSchedule,
         },
       };
     });

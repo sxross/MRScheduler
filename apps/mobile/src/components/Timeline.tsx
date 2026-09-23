@@ -6,10 +6,10 @@
  * in diagnostics/editing, not as unexplained decorative bars.
  */
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { PanResponder, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { G, Line, Rect, Text as SvgText } from 'react-native-svg';
 import type { Configuration } from '@mrscheduler/domain';
-import { DEFAULT_VIEWPORT, buildTimeline, type Viewport } from '@mrscheduler/timeline';
+import { DEFAULT_VIEWPORT, buildTimeline, ordinalAtX, snap, type Viewport } from '@mrscheduler/timeline';
 import { useTheme } from '../theme';
 
 const BAR_HEIGHT = 16;
@@ -22,16 +22,19 @@ export function Timeline({
   config,
   anchorDate,
   onSelectDevice,
+  onTrimSchedule,
 }: {
   config: Configuration;
   anchorDate: string;
   onSelectDevice?: (deviceId: string) => void;
+  onTrimSchedule?: (scheduleId: string, edge: 'on' | 'off', minutesOfDay: number) => void;
 }) {
   const theme = useTheme();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const landscape = windowWidth > windowHeight;
   const [width, setWidth] = useState(0);
   const [selectedBar, setSelectedBar] = useState<string | null>(null);
+  const [dragPreview, setDragPreview] = useState<{ barKey: string; edge: 'on' | 'off'; x: number; label: string } | null>(null);
 
   const viewport: Viewport = {
     ...DEFAULT_VIEWPORT,
@@ -100,9 +103,10 @@ export function Timeline({
                           <G key={barKey} onPress={() => setSelectedBar(selected ? null : barKey)}>
                             <Rect x={bx} y={barY} width={bw} height={BAR_HEIGHT} fill={theme.bar} stroke={selected ? theme.text : 'none'} strokeWidth={selected ? 1.5 : 0} />
                             {selected && <>
-                              <TrimHandle x={bx} y={centerY} theme={theme} />
-                              <TrimHandle x={bx + bw} y={centerY} theme={theme} />
+                              <TrimHandle x={bx} y={centerY} theme={theme} onDrag={bar.scheduleIds.length === 1 ? (x, done) => previewTrim(barKey, bar.scheduleIds[0], 'on', x, viewport, setDragPreview, onTrimSchedule)(done) : undefined} />
+                              <TrimHandle x={bx + bw} y={centerY} theme={theme} onDrag={bar.scheduleIds.length === 1 ? (x, done) => previewTrim(barKey, bar.scheduleIds[0], 'off', x, viewport, setDragPreview, onTrimSchedule)(done) : undefined} />
                               <SvgText x={bx + 4} y={barY - 6} fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize={10} fontWeight="600" fill={theme.text}>{shortTime(bar.startLabel)} → {shortTime(bar.endLabel)}</SvgText>
+                            {dragPreview?.barKey === barKey && <SvgText x={dragPreview.x + 6} y={barY + BAR_HEIGHT + 14} fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize={10} fontWeight="600" fill={theme.text}>{dragPreview.label}</SvgText>}
                             </>}
                           </G>
                         );
@@ -133,17 +137,51 @@ function TrimHandle({
   x,
   y,
   theme,
+  onDrag,
 }: {
   x: number;
   y: number;
   theme: ReturnType<typeof useTheme>;
+  onDrag?: (x: number, done: boolean) => void;
 }) {
+  const responder = PanResponder.create({
+    onStartShouldSetPanResponder: () => !!onDrag,
+    onMoveShouldSetPanResponder: () => !!onDrag,
+    onPanResponderMove: (_event, gesture) => onDrag?.(x + gesture.dx, false),
+    onPanResponderRelease: (_event, gesture) => onDrag?.(x + gesture.dx, true),
+    onPanResponderTerminate: (_event, gesture) => onDrag?.(x + gesture.dx, true),
+  });
   return (
-    <G>
+    <G {...responder.panHandlers}>
+      <Rect x={x - 10} y={y - BAR_HEIGHT} width={20} height={BAR_HEIGHT * 2} fill="transparent" />
       <Rect x={x - 4} y={y - BAR_HEIGHT / 2 - 3} width={8} height={BAR_HEIGHT + 6} rx={2} fill={theme.surface} stroke={theme.bar} strokeWidth={2} />
       <Line x1={x} y1={y - 4} x2={x} y2={y + 4} stroke={theme.bar} strokeWidth={1.5} />
     </G>
   );
+}
+
+function previewTrim(
+  barKey: string,
+  scheduleId: string,
+  edge: 'on' | 'off',
+  x: number,
+  viewport: Viewport,
+  setPreview: (value: { barKey: string; edge: 'on' | 'off'; x: number; label: string } | null) => void,
+  commit?: (scheduleId: string, edge: 'on' | 'off', minutesOfDay: number) => void,
+) {
+  const ordinal = snap(ordinalAtX(x, viewport), 15);
+  const minutesOfDay = ((ordinal + 720) % 1440 + 1440) % 1440;
+  const h24 = Math.floor(minutesOfDay / 60);
+  const h = h24 % 12 || 12;
+  const label = `${h}:${String(minutesOfDay % 60).padStart(2, '0')} ${h24 < 12 ? 'AM' : 'PM'}`;
+  const snappedX = viewport.padding + (ordinal / 1440) * (viewport.width - viewport.padding * 2);
+  setPreview({ barKey, edge, x: snappedX, label });
+  return (done: boolean) => {
+    if (done) {
+      commit?.(scheduleId, edge, minutesOfDay);
+      setPreview(null);
+    }
+  };
 }
 
 function AstroBoundary({

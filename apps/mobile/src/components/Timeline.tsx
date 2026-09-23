@@ -97,16 +97,22 @@ export function Timeline({
                       {row.bars.map((bar, i) => {
                         const barKey = `${row.deviceId}:${bar.scheduleIds.join(',')}:${i}`;
                         const selected = selectedBar === barKey;
-                        const bx = Math.round(bar.x);
-                        const bw = Math.max(Math.round(bar.x + bar.width) - bx, 2);
+                        const baseLeft = Math.round(bar.x);
+                        const baseRight = Math.round(bar.x + bar.width);
+                        const preview = dragPreview?.barKey === barKey ? dragPreview : null;
+                        const left = preview?.edge === 'on' ? preview.x : baseLeft;
+                        const right = preview?.edge === 'off' ? preview.x : baseRight;
+                        const bx = Math.min(left, right - 2);
+                        const bw = Math.max(right - bx, 2);
+                        const startLabel = preview?.edge === 'on' ? preview.label : shortTime(bar.startLabel);
+                        const endLabel = preview?.edge === 'off' ? preview.label : shortTime(bar.endLabel);
                         return (
                           <G key={barKey} onPress={() => setSelectedBar(selected ? null : barKey)}>
                             <Rect x={bx} y={barY} width={bw} height={BAR_HEIGHT} fill={theme.bar} stroke={selected ? theme.text : 'none'} strokeWidth={selected ? 1.5 : 0} />
                             {selected && <>
                               <TrimHandle x={bx} y={centerY} theme={theme} onDrag={bar.scheduleIds.length === 1 ? (x, done) => previewTrim(barKey, bar.scheduleIds[0], 'on', x, viewport, setDragPreview, onTrimSchedule)(done) : undefined} />
                               <TrimHandle x={bx + bw} y={centerY} theme={theme} onDrag={bar.scheduleIds.length === 1 ? (x, done) => previewTrim(barKey, bar.scheduleIds[0], 'off', x, viewport, setDragPreview, onTrimSchedule)(done) : undefined} />
-                              <SvgText x={bx + 4} y={barY - 6} fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize={10} fontWeight="600" fill={theme.text}>{shortTime(bar.startLabel)} → {shortTime(bar.endLabel)}</SvgText>
-                            {dragPreview?.barKey === barKey && <SvgText x={dragPreview.x + 6} y={barY + BAR_HEIGHT + 14} fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize={10} fontWeight="600" fill={theme.text}>{dragPreview.label}</SvgText>}
+                              <SvgText x={bx + 4} y={barY - 6} fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize={10} fontWeight="600" fill={theme.text}>{startLabel} → {endLabel}</SvgText>
                             </>}
                           </G>
                         );

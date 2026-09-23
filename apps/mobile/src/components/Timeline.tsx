@@ -107,8 +107,8 @@ export function Timeline({
                         const startLabel = preview?.edge === 'on' ? preview.label : shortTime(bar.startLabel);
                         const endLabel = preview?.edge === 'off' ? preview.label : shortTime(bar.endLabel);
                         return (
-                          <G key={barKey} onPress={() => setSelectedBar(selected ? null : barKey)}>
-                            <Rect x={bx} y={barY} width={bw} height={BAR_HEIGHT} fill={theme.bar} stroke={selected ? theme.text : 'none'} strokeWidth={selected ? 1.5 : 0} />
+                          <G key={barKey}>
+                            <Rect x={bx} y={barY} width={bw} height={BAR_HEIGHT} fill={theme.bar} stroke={selected ? theme.text : 'none'} strokeWidth={selected ? 1.5 : 0} onPress={() => setSelectedBar(selected ? null : barKey)} />
                             {selected && <>
                               <TrimHandle x={bx} y={centerY} theme={theme} onDrag={bar.scheduleIds.length === 1 ? (x, done) => previewTrim(barKey, bar.scheduleIds[0], 'on', x, viewport, setDragPreview, onTrimSchedule)(done) : undefined} />
                               <TrimHandle x={bx + bw} y={centerY} theme={theme} onDrag={bar.scheduleIds.length === 1 ? (x, done) => previewTrim(barKey, bar.scheduleIds[0], 'off', x, viewport, setDragPreview, onTrimSchedule)(done) : undefined} />
@@ -192,7 +192,8 @@ function previewTrim(
   setPreview: (value: { barKey: string; edge: 'on' | 'off'; x: number; label: string } | null) => void,
   commit?: (scheduleId: string, edge: 'on' | 'off', minutesOfDay: number) => void,
 ) {
-  const ordinal = snap(ordinalAtX(x, viewport), 15);
+  const rawOrdinal = ordinalAtX(x, viewport);
+  const ordinal = Math.round(rawOrdinal / 15) * 15;
   const minutesOfDay = ((ordinal + 720) % 1440 + 1440) % 1440;
   const h24 = Math.floor(minutesOfDay / 60);
   const h = h24 % 12 || 12;

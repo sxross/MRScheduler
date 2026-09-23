@@ -13,6 +13,15 @@ export const sampleConfig: Configuration = {
     porch: { id: 'porch', name: 'Porch Lights', enabled: true },
     entry: { id: 'entry', name: 'Entry', enabled: true },
     kitchen: { id: 'kitchen', name: 'Kitchen', enabled: true },
+    driveway: { id: 'driveway', name: 'Driveway', enabled: true },
+    path: { id: 'path', name: 'Path Lights', enabled: true },
+    deck: { id: 'deck', name: 'Deck', enabled: true },
+    accent: { id: 'accent', name: 'Accent', enabled: true },
+    office: { id: 'office', name: 'Office', enabled: true },
+    hall: { id: 'hall', name: 'Hall', enabled: true },
+    bedroom: { id: 'bedroom', name: 'Bedroom', enabled: true },
+    garage: { id: 'garage', name: 'Garage', enabled: true },
+    fountain: { id: 'fountain', name: 'Fountain', enabled: true },
   },
   schedules: {
     porchEvening: {
@@ -57,6 +66,42 @@ export const sampleConfig: Configuration = {
       on: { kind: 'astro', event: 'dusk', offsetMinutes: -10 },
       off: { kind: 'absolute', minutesOfDay: 22 * 60 },
       days: [...EVERY_DAY],
+    },
+    drivewayEvening: {
+      id: 'drivewayEvening', deviceId: 'driveway', enabled: true, kind: 'adhoc',
+      on: { kind: 'absolute', minutesOfDay: 17 * 60 + 30 }, off: { kind: 'absolute', minutesOfDay: 23 * 60 + 30 }, days: [...EVERY_DAY],
+    },
+    pathEvening: {
+      id: 'pathEvening', deviceId: 'path', enabled: true, kind: 'adhoc',
+      on: { kind: 'absolute', minutesOfDay: 18 * 60 }, off: { kind: 'absolute', minutesOfDay: 22 * 60 + 30 }, days: [...EVERY_DAY],
+    },
+    deckEvening: {
+      id: 'deckEvening', deviceId: 'deck', enabled: true, kind: 'adhoc',
+      on: { kind: 'absolute', minutesOfDay: 19 * 60 }, off: { kind: 'absolute', minutesOfDay: 23 * 60 }, days: [...EVERY_DAY],
+    },
+    accentEvening: {
+      id: 'accentEvening', deviceId: 'accent', enabled: true, kind: 'adhoc',
+      on: { kind: 'absolute', minutesOfDay: 16 * 60 + 45 }, off: { kind: 'absolute', minutesOfDay: 22 * 60 }, days: [...EVERY_DAY],
+    },
+    officeEvening: {
+      id: 'officeEvening', deviceId: 'office', enabled: true, kind: 'adhoc',
+      on: { kind: 'absolute', minutesOfDay: 17 * 60 }, off: { kind: 'absolute', minutesOfDay: 20 * 60 + 30 }, days: [...EVERY_DAY],
+    },
+    hallNight: {
+      id: 'hallNight', deviceId: 'hall', enabled: true, kind: 'adhoc',
+      on: { kind: 'absolute', minutesOfDay: 21 * 60 }, off: { kind: 'absolute', minutesOfDay: 23 * 60 + 45 }, days: [...EVERY_DAY],
+    },
+    bedroomNight: {
+      id: 'bedroomNight', deviceId: 'bedroom', enabled: true, kind: 'adhoc',
+      on: { kind: 'absolute', minutesOfDay: 22 * 60 }, off: { kind: 'absolute', minutesOfDay: 23 * 60 + 30 }, days: [...EVERY_DAY],
+    },
+    garageEvening: {
+      id: 'garageEvening', deviceId: 'garage', enabled: true, kind: 'adhoc',
+      on: { kind: 'absolute', minutesOfDay: 18 * 60 + 30 }, off: { kind: 'absolute', minutesOfDay: 21 * 60 }, days: [...EVERY_DAY],
+    },
+    fountainEvening: {
+      id: 'fountainEvening', deviceId: 'fountain', enabled: true, kind: 'adhoc',
+      on: { kind: 'absolute', minutesOfDay: 16 * 60 }, off: { kind: 'absolute', minutesOfDay: 20 * 60 }, days: [...EVERY_DAY],
     },
     kitchenMorning: {
       id: 'kitchenMorning',

@@ -7,8 +7,7 @@
  */
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, G, Line, Rect, Text as SvgText } from 'react-native-svg';
+import Svg, { G, Line, Rect, Text as SvgText } from 'react-native-svg';
 import type { Configuration } from '@mrscheduler/domain';
 import { DEFAULT_VIEWPORT, buildTimeline, type Viewport } from '@mrscheduler/timeline';
 import { useTheme } from '../theme';
@@ -30,7 +29,6 @@ export function Timeline({
 }) {
   const theme = useTheme();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
   const landscape = windowWidth > windowHeight;
   const [width, setWidth] = useState(0);
   const [selectedBar, setSelectedBar] = useState<string | null>(null);
@@ -108,13 +106,6 @@ export function Timeline({
                             </>}
                           </G>
                         );
-                      })}
-                      {row.clamps.map((clamp, i) => {
-                        const markerY = centerY + BAR_HEIGHT / 2 + 8;
-                        return <G key={`clamp-${i}`}>
-                          <Line x1={clamp.requestedX} y1={markerY} x2={clamp.effectiveX} y2={centerY + BAR_HEIGHT / 2} stroke={theme.ghost} strokeWidth={1} strokeDasharray="2 2" />
-                          <Circle cx={clamp.requestedX} cy={markerY} r={2.5} fill={theme.ghost} />
-                        </G>;
                       })}
                       {row.blocked.length > 0 && <SvgText x={LABEL_GUTTER} y={centerY + 4} fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize={11} fill={theme.warning}>Cannot run today</SvgText>}
                     </G>

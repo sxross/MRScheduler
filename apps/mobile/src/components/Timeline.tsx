@@ -144,22 +144,29 @@ function TrimHandle({
   theme: ReturnType<typeof useTheme>;
   onDrag?: (x: number, done: boolean) => void;
 }) {
-  let startClientX = 0;
+  const drag = { active: false, startClientX: 0, originX: x };
   const pointerProps = onDrag ? ({
     onPointerDown: (event: any) => {
-      startClientX = event.nativeEvent?.clientX ?? event.clientX ?? 0;
+      drag.active = true;
+      drag.startClientX = event.nativeEvent?.clientX ?? event.clientX ?? 0;
+      drag.originX = x;
       event.currentTarget?.setPointerCapture?.(event.nativeEvent?.pointerId ?? event.pointerId);
+      event.preventDefault?.();
     },
     onPointerMove: (event: any) => {
-      const buttons = event.nativeEvent?.buttons ?? event.buttons;
-      if (!buttons) return;
-      const clientX = event.nativeEvent?.clientX ?? event.clientX ?? startClientX;
-      onDrag(x + clientX - startClientX, false);
+      if (!drag.active) return;
+      const clientX = event.nativeEvent?.clientX ?? event.clientX ?? drag.startClientX;
+      onDrag(drag.originX + clientX - drag.startClientX, false);
+      event.preventDefault?.();
     },
     onPointerUp: (event: any) => {
-      const clientX = event.nativeEvent?.clientX ?? event.clientX ?? startClientX;
-      onDrag(x + clientX - startClientX, true);
+      if (!drag.active) return;
+      const clientX = event.nativeEvent?.clientX ?? event.clientX ?? drag.startClientX;
+      drag.active = false;
+      onDrag(drag.originX + clientX - drag.startClientX, true);
+      event.preventDefault?.();
     },
+    onPointerCancel: () => { drag.active = false; },
   } as any) : {};
   return (
     <G {...pointerProps}>

@@ -20,6 +20,9 @@
     },
     "plugins": [
       "expo-dev-client"
-    ]
+    ],
+    "experiments": {
+      "baseUrl": "/MRScheduler"
+    }
   }
 }

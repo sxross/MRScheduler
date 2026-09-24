@@ -5,7 +5,7 @@
  * primary; astronomical boundaries are secondary. Constraint details belong
  * in diagnostics/editing, not as unexplained decorative bars.
  */
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { G, Line, Rect, Text as SvgText } from 'react-native-svg';
 import type { Configuration } from '@mrscheduler/domain';
@@ -40,9 +40,14 @@ export function Timeline({
     ...DEFAULT_VIEWPORT,
     width,
     padding: LABEL_GUTTER,
+    rightPadding: 14,
     headerHeight: HEADER_HEIGHT,
     rowHeight: ROW_HEIGHT,
   };
+  // Pointer coordinates are viewport-specific. Never carry an in-flight preview
+  // through rotation/resizing; committed schedule state will be reprojected below.
+  useEffect(() => { setDragPreview(null); }, [width]);
+
   const layout = useMemo(
     () => (width > 0 ? buildTimeline(config, anchorDate, viewport, { tickMinutes: 360 }) : null),
     [config, anchorDate, width],

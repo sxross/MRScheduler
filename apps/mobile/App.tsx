@@ -10,6 +10,12 @@ import { ScheduleList } from './src/components/ScheduleList';
 import { sampleConfig } from './src/state/sampleConfig';
 import { useTheme } from './src/theme';
 
+const BUILD_HASH = process.env.EXPO_PUBLIC_BUILD_HASH ?? 'dev';
+const DEPLOYED_AT = process.env.EXPO_PUBLIC_DEPLOYED_AT;
+const BUILD_LABEL = DEPLOYED_AT
+  ? `${BUILD_HASH} · ${DateTime.fromISO(DEPLOYED_AT).toLocal().toFormat('LLL d, h:mm a')}`
+  : BUILD_HASH;
+
 export default function App() {
   const [config, setConfig] = useState<Configuration>(sampleConfig);
   const now = useMemo(() => DateTime.now().setZone(sampleConfig.location.timezone), []);
@@ -78,7 +84,7 @@ function Screen({
           <Text style={[styles.subtitle, { color: theme.textMuted }]}>
             {DateTime.fromISO(anchorDate).toFormat('cccc d LLLL')} · noon to noon
           </Text>
-          <Text style={[styles.build, { color: theme.textMuted }]}>0311084</Text>
+          <Text style={[styles.build, { color: theme.textMuted }]}>{BUILD_LABEL}</Text>
         </View>
 
         <Timeline config={config} anchorDate={anchorDate} onTrimSchedule={onTrim} />

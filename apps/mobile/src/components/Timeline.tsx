@@ -111,7 +111,8 @@ export function Timeline({
                             <Rect x={bx} y={barY} width={bw} height={BAR_HEIGHT} fill={theme.bar} stroke={selected ? theme.text : 'none'} strokeWidth={selected ? 1.5 : 0} onPress={() => setSelectedBar(selected ? null : barKey)} />
                             {selected && <>
                               <TrimHandle x={bx} y={centerY} theme={theme} onDrag={bar.scheduleIds.length === 1 ? (x, done) => previewTrim(barKey, bar.scheduleIds[0], 'on', x, viewport, setDragPreview, onTrimSchedule)(done) : undefined} />
-                              <TrimHandle x={bx + bw} y={centerY} theme={theme} onDrag={bar.scheduleIds.length === 1 ? (x, done) => previewTrim(barKey, bar.scheduleIds[0], 'off', x, viewport, setDragPreview, onTrimSchedule)(done) : undefined} />
+                              {!bar.continuesPast && <TrimHandle x={bx + bw} y={centerY} theme={theme} onDrag={bar.scheduleIds.length === 1 ? (x, done) => previewTrim(barKey, bar.scheduleIds[0], 'off', x, viewport, setDragPreview, onTrimSchedule)(done) : undefined} />}
+                              {bar.continuesPast && <ContinuationMark x={bx + bw} y={centerY} theme={theme} />}
                               <SvgText x={bx + 4} y={barY - 6} fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize={10} fontWeight="600" fill={theme.text}>{startLabel} → {endLabel}</SvgText>
                             </>}
                           </G>
@@ -138,6 +139,15 @@ export function Timeline({
   );
 }
 
+
+function ContinuationMark({ x, y, theme }: { x: number; y: number; theme: ReturnType<typeof useTheme> }) {
+  return (
+    <G>
+      <Line x1={x - 8} y1={y - 5} x2={x - 2} y2={y} stroke={theme.bar} strokeWidth={2} />
+      <Line x1={x - 8} y1={y + 5} x2={x - 2} y2={y} stroke={theme.bar} strokeWidth={2} />
+    </G>
+  );
+}
 
 function TrimHandle({
   x,

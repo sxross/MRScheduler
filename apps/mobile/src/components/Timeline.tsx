@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { G, Line, Rect, Text as SvgText } from 'react-native-svg';
 import type { Configuration } from '@mrscheduler/domain';
-import { DEFAULT_VIEWPORT, buildTimeline, ordinalAtX, snap, type Viewport } from '@mrscheduler/timeline';
+import { DEFAULT_VIEWPORT, buildTimeline, clockLabel, ordinalAtX, type Viewport } from '@mrscheduler/timeline';
 import { useTheme } from '../theme';
 
 const BAR_HEIGHT = 16;
@@ -109,8 +109,12 @@ export function Timeline({
                         const right = preview?.edge === 'off' ? preview.x : baseRight;
                         const bx = Math.min(left, right - 2);
                         const bw = Math.max(right - bx, 2);
-                        const startLabel = preview?.edge === 'on' ? preview.label : shortTime(bar.startLabel);
-                        const endLabel = preview?.edge === 'off' ? preview.label : shortTime(bar.endLabel);
+                        const startLabel = preview?.edge === 'on' ? preview.label : shortTime(clockLabel(ordinalAtX(left, viewport)));
+                        const endLabel = preview?.edge === 'off'
+                          ? preview.label
+                          : bar.continuesPast
+                            ? shortTime(bar.endLabel)
+                            : shortTime(clockLabel(ordinalAtX(right, viewport)));
                         return (
                           <G key={barKey}>
                             <Rect x={bx} y={barY} width={bw} height={BAR_HEIGHT} fill={theme.bar} stroke={selected ? theme.text : 'none'} strokeWidth={selected ? 1.5 : 0} onPress={() => setSelectedBar(selected ? null : barKey)} />

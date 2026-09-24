@@ -10,7 +10,7 @@ import { ScheduleList } from './src/components/ScheduleList';
 import { sampleConfig } from './src/state/sampleConfig';
 import { useTheme } from './src/theme';
 
-const BUILD_HASH = process.env.EXPO_PUBLIC_BUILD_HASH ?? 'dev';
+const BUILD_HASH = (process.env.EXPO_PUBLIC_BUILD_HASH ?? 'dev').slice(-7);
 const DEPLOYED_AT = process.env.EXPO_PUBLIC_DEPLOYED_AT;
 const BUILD_LABEL = DEPLOYED_AT
   ? `${BUILD_HASH} · ${DateTime.fromISO(DEPLOYED_AT).toLocal().toFormat('LLL d, h:mm a')}`

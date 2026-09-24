@@ -10,8 +10,10 @@ import { MINUTES_PER_DAY } from '@mrscheduler/domain';
 
 export interface Viewport {
   width: number;
-  /** Horizontal inset, so the first and last labels are not clipped. */
+  /** Left inset; normally reserves room for device labels. */
   padding: number;
+  /** Optional right inset. Defaults to padding for backwards compatibility. */
+  rightPadding?: number;
   rowHeight: number;
   /** Vertical space above the first device row, for the axis and astro marks. */
   headerHeight: number;
@@ -24,7 +26,7 @@ export const DEFAULT_VIEWPORT: Omit<Viewport, 'width'> = {
 };
 
 export function plotWidth(viewport: Viewport): number {
-  return Math.max(0, viewport.width - viewport.padding * 2);
+  return Math.max(0, viewport.width - viewport.padding - (viewport.rightPadding ?? viewport.padding));
 }
 
 /** Screen x for a position on the noon-origin axis. */

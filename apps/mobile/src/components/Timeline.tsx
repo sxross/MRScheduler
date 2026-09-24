@@ -6,7 +6,7 @@
  * in diagnostics/editing, not as unexplained decorative bars.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { G, Line, Rect, Text as SvgText } from 'react-native-svg';
 import type { Configuration } from '@mrscheduler/domain';
 import { DEFAULT_VIEWPORT, buildTimeline, clockLabel, ordinalAtX, type Viewport } from '@mrscheduler/timeline';
@@ -34,8 +34,7 @@ export function Timeline({
   const landscape = windowWidth > windowHeight;
   const [width, setWidth] = useState(0);
   const [selectedBar, setSelectedBar] = useState<string | null>(null);
-  const [dragPreview, setDragPreview] = useState<{ barKey: string; edge: 'on' | 'off'; x: number; label: string } | null>(null);
-  const [nativeSelected, setNativeSelected] = useState<{ barKey: string; scheduleId: string; left: number; right: number; y: number; continuesPast: boolean } | null>(null);
+  const [dragPreview, setDragPreview] = useState<{ barKey: string; edge: 'on' | 'off'; x: number; label: string } | null>(null); scheduleId: string; left: number; right: number; y: number; continuesPast: boolean } | null>(null);
 
   const viewport: Viewport = {
     ...DEFAULT_VIEWPORT,
@@ -47,7 +46,7 @@ export function Timeline({
   };
   // Pointer coordinates are viewport-specific. Never carry an in-flight preview
   // through rotation/resizing; committed schedule state will be reprojected below.
-  useEffect(() => { setDragPreview(null); setNativeSelected(null); }, [width]);
+  useEffect(() => { setDragPreview(null); }, [width]);
 
   const layout = useMemo(
     () => (width > 0 ? buildTimeline(config, anchorDate, viewport, { tickMinutes: 360 }) : null),
@@ -118,12 +117,10 @@ export function Timeline({
                             : shortTime(clockLabel(ordinalAtX(right, viewport)));
                         return (
                           <G key={barKey}>
-                            <Rect x={bx} y={barY} width={bw} height={BAR_HEIGHT} fill={theme.bar} stroke={selected ? theme.text : 'none'} strokeWidth={selected ? 1.5 : 0} onPress={() => {
-                              const next = selected ? null : barKey;
-                              setSelectedBar(next);
-                              setNativeSelected(next && bar.scheduleIds.length === 1 ? { barKey, scheduleId: bar.scheduleIds[0], left: bx, right: bx + bw, y: centerY, continuesPast: bar.continuesPast } : null);
-                            }} />
+                            <Rect x={bx} y={barY} width={bw} height={BAR_HEIGHT} fill={theme.bar} stroke={selected ? theme.text : 'none'} strokeWidth={selected ? 1.5 : 0} onPress={() => setSelectedBar(selected ? null : barKey)} />
                             {selected && <>
+                              <TrimHandle x={bx} y={centerY} theme={theme} onDrag={bar.scheduleIds.length === 1 ? (x, done) => previewTrim(barKey, bar.scheduleIds[0], 'on', x, viewport, setDragPreview, onTrimSchedule)(done) : undefined} />
+                              {!bar.continuesPast && <TrimHandle x={bx + bw} y={centerY} theme={theme} onDrag={bar.scheduleIds.length === 1 ? (x, done) => previewTrim(barKey, bar.scheduleIds[0], 'off', x, viewport, setDragPreview, onTrimSchedule)(done) : undefined} />}
                               {bar.continuesPast && <ContinuationMark x={bx + bw} y={centerY} theme={theme} />}
                               <SvgText x={bx + 4} y={barY - 6} fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize={10} fontWeight="600" fill={theme.text}>{startLabel} → {endLabel}</SvgText>
                             </>}
@@ -135,15 +132,6 @@ export function Timeline({
                   );
                 })}
               </Svg>
-              {nativeSelected && (
-                <NativeTrimOverlay
-                  selected={nativeSelected}
-                  viewport={viewport}
-                  theme={theme}
-                  onPreview={setDragPreview}
-                  onCommit={onTrimSchedule}
-                />
-              )}
             </ScrollView>
           </>
         )}
@@ -170,34 +158,42 @@ function ContinuationMark({ x, y, theme }: { x: number; y: number; theme: Return
   );
 }
 
-function NativeTrimOverlay({
-  selected, viewport, theme, onPreview, onCommit,
+function TrimHandle({
+  x, y, theme, onDrag,
 }: {
-  selected: { barKey: string; scheduleId: string; left: number; right: number; y: number; continuesPast: boolean };
-  viewport: Viewport;
-  theme: ReturnType<typeof useTheme>;
-  onPreview: (value: { barKey: string; edge: 'on' | 'off'; x: number; label: string } | null) => void;
-  onCommit?: (scheduleId: string, edge: 'on' | 'off', minutesOfDay: number) => void;
+  x: number; y: number; theme: ReturnType<typeof useTheme>;
+  onDrag?: (x: number, done: boolean) => void;
 }) {
-  const makeResponder = (edge: 'on' | 'off', originX: number) => PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: () => { document?.getSelection?.()?.removeAllRanges?.(); },
-    onPanResponderMove: (_e, g) => previewTrim(selected.barKey, selected.scheduleId, edge, originX + g.dx, viewport, onPreview, onCommit)(false),
-    onPanResponderRelease: (_e, g) => previewTrim(selected.barKey, selected.scheduleId, edge, originX + g.dx, viewport, onPreview, onCommit)(true),
-    onPanResponderTerminate: (_e, g) => previewTrim(selected.barKey, selected.scheduleId, edge, originX + g.dx, viewport, onPreview, onCommit)(true),
-  });
-  const left = useMemo(() => makeResponder('on', selected.left), [selected.barKey, selected.left, viewport.width]);
-  const right = useMemo(() => makeResponder('off', selected.right), [selected.barKey, selected.right, viewport.width]);
+  const drag = useRef({ active: false, startClientX: 0, originX: x });
+  const pointerProps = onDrag ? ({
+    onPointerDown: (event: any) => {
+      drag.current.active = true;
+      drag.current.startClientX = event.nativeEvent?.clientX ?? event.clientX ?? 0;
+      drag.current.originX = x;
+      event.currentTarget?.setPointerCapture?.(event.nativeEvent?.pointerId ?? event.pointerId);
+      event.preventDefault?.();
+    },
+    onPointerMove: (event: any) => {
+      if (!drag.current.active) return;
+      const clientX = event.nativeEvent?.clientX ?? event.clientX ?? drag.current.startClientX;
+      onDrag(drag.current.originX + clientX - drag.current.startClientX, false);
+      event.preventDefault?.();
+    },
+    onPointerUp: (event: any) => {
+      if (!drag.current.active) return;
+      const clientX = event.nativeEvent?.clientX ?? event.clientX ?? drag.current.startClientX;
+      drag.current.active = false;
+      onDrag(drag.current.originX + clientX - drag.current.startClientX, true);
+      event.preventDefault?.();
+    },
+    onPointerCancel: () => { drag.current.active = false; },
+  } as any) : {};
   return (
-    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-      <View {...left.panHandlers} style={[styles.nativeHandleHit, { left: selected.left - 22, top: selected.y - 22 }]}>
-        <View style={[styles.nativeHandle, { backgroundColor: theme.surface, borderColor: theme.bar }]}><View style={[styles.nativeGrip, { backgroundColor: theme.bar }]} /></View>
-      </View>
-      {!selected.continuesPast && <View {...right.panHandlers} style={[styles.nativeHandleHit, { left: selected.right - 22, top: selected.y - 22 }]}>
-        <View style={[styles.nativeHandle, { backgroundColor: theme.surface, borderColor: theme.bar }]}><View style={[styles.nativeGrip, { backgroundColor: theme.bar }]} /></View>
-      </View>}
-    </View>
+    <G {...pointerProps}>
+      <Rect x={x - 16} y={y - 22} width={32} height={44} fill="transparent" pointerEvents="all" />
+      <Rect x={x - 5} y={y - BAR_HEIGHT / 2 - 4} width={10} height={BAR_HEIGHT + 8} rx={3} fill={theme.surface} stroke={theme.bar} strokeWidth={2} />
+      <Line x1={x} y1={y - 5} x2={x} y2={y + 5} stroke={theme.bar} strokeWidth={1.5} />
+    </G>
   );
 }
 
@@ -297,8 +293,5 @@ const styles = StyleSheet.create({
   legendSwatch: { width: 18, height: 6, borderRadius: 3 },
   nightSwatch: { width: 18, height: 10, borderRadius: 2 },
   clampSwatch: { width: 8, height: 8, borderRadius: 4, borderWidth: 1.5 },
-  nativeHandleHit: { position: 'absolute', width: 44, height: 44, alignItems: 'center', justifyContent: 'center', userSelect: 'none' as any },
-  nativeHandle: { width: 12, height: 30, borderRadius: 4, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  nativeGrip: { width: 2, height: 12, borderRadius: 1 },
   legendText: { fontSize: 11, marginRight: 6 },
 });

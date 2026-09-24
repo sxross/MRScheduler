@@ -159,9 +159,6 @@ export function buildTimeline(
     const bars: Bar[] = intervals
       .filter((i) => i.deviceId === device.id)
       .map((interval) => {
-        // The visible timeline is one noon-to-noon solar day. Clip both edges
-        // to that viewport; keep the original labels/continuation flag so the
-        // authored interval can still be described accurately.
         const visibleStart = Math.max(0, interval.start);
         const visibleEnd = Math.min(interval.end, MINUTES_PER_DAY);
         if (visibleEnd <= visibleStart) return null;
@@ -170,6 +167,8 @@ export function buildTimeline(
           scheduleIds: [...interval.scheduleIds],
           x,
           width: xOfOrdinal(visibleEnd, viewport) - x,
+          // Labels must describe the same effective ordinals that produced
+          // the geometry. Authored/requested values belong in edit detail.
           startLabel: clockLabel(interval.start),
           endLabel: clockLabel(interval.end),
           continuesPast: interval.end > MINUTES_PER_DAY,

@@ -34,7 +34,7 @@ export function Timeline({
   const landscape = windowWidth > windowHeight;
   const [width, setWidth] = useState(0);
   const [selectedBar, setSelectedBar] = useState<string | null>(null);
-  const [dragPreview, setDragPreview] = useState<{ barKey: string; edge: 'on' | 'off'; x: number; label: string } | null>(null); scheduleId: string; left: number; right: number; y: number; continuesPast: boolean } | null>(null);
+  const [dragPreview, setDragPreview] = useState<{ barKey: string; edge: 'on' | 'off'; x: number; label: string } | null>(null);
 
   const viewport: Viewport = {
     ...DEFAULT_VIEWPORT,

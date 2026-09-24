@@ -78,7 +78,7 @@ function Screen({
           <Text style={[styles.subtitle, { color: theme.textMuted }]}>
             {DateTime.fromISO(anchorDate).toFormat('cccc d LLLL')} · noon to noon
           </Text>
-          <Text style={[styles.build, { color: theme.textMuted }]}>0a7528d</Text>
+          <Text style={[styles.build, { color: theme.textMuted }]}>0cfdc5f</Text>
         </View>
 
         <Timeline config={config} anchorDate={anchorDate} onTrimSchedule={onTrim} />

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DateTime } from 'luxon';
-import { ordinalOf, resolveEndpoint, solarDay, solarDayContaining } from '../src/scheduling/solarDay';
+import { dayLength, ordinalOf, resolveEndpoint, solarDay, solarDayContaining } from '../src/scheduling/solarDay';
 import { LA, TROMSO } from './fixtures';
 
 describe('the noon-origin axis', () => {
@@ -49,7 +49,17 @@ describe('the noon-origin axis', () => {
     // 2026-03-08: clocks jump 02:00 -> 03:00 in America/Los_Angeles.
     const dst = solarDay('2026-03-07', LA);
     const r = resolveEndpoint({ kind: 'absolute', minutesOfDay: 6 * 60 }, dst, LA);
-    expect(r.ok && r.at.toFormat('yyyy-MM-dd HH:mm')).toBe('2026-03-08 07:00');
+    expect(r.ok && r.at.toFormat('yyyy-MM-dd HH:mm')).toBe('2026-03-08 06:00');
+    expect(r.ok && r.ordinal).toBe(1020);
+    expect(dayLength(dst)).toBe(1380);
+  });
+
+  it('keeps a fall-back wall-clock time at its authored hour', () => {
+    const dst = solarDay('2026-10-31', LA);
+    const r = resolveEndpoint({ kind: 'absolute', minutesOfDay: 6 * 60 }, dst, LA);
+    expect(r.ok && r.at.toFormat('yyyy-MM-dd HH:mm')).toBe('2026-11-01 06:00');
+    expect(r.ok && r.ordinal).toBe(1140);
+    expect(dayLength(dst)).toBe(1500);
   });
 
   it('reports polar nights as unresolvable rather than guessing', () => {

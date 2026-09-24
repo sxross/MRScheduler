@@ -48,6 +48,11 @@ export function ordinalOf(instant: DateTime, day: SolarDay): number {
   return instant.diff(day.start, 'minutes').minutes;
 }
 
+/** Elapsed minutes in this local noon-to-noon day (1380/1500 at DST changes). */
+export function dayLength(day: SolarDay): number {
+  return ordinalOf(day.end, day);
+}
+
 export type Resolution =
   | { ok: true; at: DateTime; ordinal: number }
   | { ok: false; reason: string };
@@ -70,8 +75,9 @@ export function resolveEndpoint(
 ): Resolution {
   if (endpoint.kind === 'absolute') {
     const m = endpoint.minutesOfDay;
-    const ordinal = m >= NOON ? m - NOON : m + NOON;
-    return { ok: true, at: day.start.plus({ minutes: ordinal }), ordinal };
+    const date = m >= NOON ? day.start : day.end;
+    const at = date.set({ hour: Math.floor(m / 60), minute: m % 60, second: 0, millisecond: 0 });
+    return { ok: true, at, ordinal: ordinalOf(at, day) };
   }
 
   const candidates = [day.start, day.start.plus({ days: 1 })]

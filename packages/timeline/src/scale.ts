@@ -10,6 +10,8 @@ import { MINUTES_PER_DAY } from '@mrscheduler/domain';
 
 export interface Viewport {
   width: number;
+  /** Actual elapsed minutes between local noons; differs at DST changes. */
+  durationMinutes?: number;
   /** Left inset; normally reserves room for device labels. */
   padding: number;
   /** Optional right inset. Defaults to padding for backwards compatibility. */
@@ -31,14 +33,14 @@ export function plotWidth(viewport: Viewport): number {
 
 /** Screen x for a position on the noon-origin axis. */
 export function xOfOrdinal(ordinal: number, viewport: Viewport): number {
-  return viewport.padding + (ordinal / MINUTES_PER_DAY) * plotWidth(viewport);
+  return viewport.padding + (ordinal / (viewport.durationMinutes ?? MINUTES_PER_DAY)) * plotWidth(viewport);
 }
 
 /** Inverse of {@link xOfOrdinal}, for dragging an endpoint. */
 export function ordinalAtX(x: number, viewport: Viewport): number {
   const span = plotWidth(viewport);
   if (span <= 0) return 0;
-  return ((x - viewport.padding) / span) * MINUTES_PER_DAY;
+  return ((x - viewport.padding) / span) * (viewport.durationMinutes ?? MINUTES_PER_DAY);
 }
 
 /**

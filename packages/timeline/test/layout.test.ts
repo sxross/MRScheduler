@@ -110,6 +110,19 @@ describe('timeline layout', () => {
     ]);
   });
 
+  it('keeps a six AM bar aligned with its clock label on a DST change', () => {
+    const morning = { ...config, schedules: {
+      s: { ...porch, id: 's', kind: 'adhoc' as const,
+        on: { kind: 'absolute', minutesOfDay: 6 * 60 } as const,
+        off: { kind: 'absolute', minutesOfDay: 7 * 60 } as const },
+    } };
+    const spring = buildTimeline(morning, '2026-03-07', viewport);
+    const bar = spring.rows[0]!.bars[0]!;
+    expect(bar.startLabel).toBe('6:00 AM');
+    expect(ordinalAtX(bar.x, { ...viewport, durationMinutes: 1380 })).toBeCloseTo(1020, 5);
+    expect(spring.ticks.find((tick) => tick.label === '12:00 AM')!.x).toBeCloseTo(spring.midnightX, 5);
+  });
+
   it('exposes a clamp as a requested and an effective position', () => {
     const clamped = {
       ...config,

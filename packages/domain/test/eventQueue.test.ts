@@ -39,6 +39,26 @@ describe('event queue', () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
+  it('does not switch off during overlapping intervals across noon', () => {
+    const overlapping = config({ schedules: {
+      previous: { ...porchEvening, id: 'previous', kind: 'adhoc', on: { kind: 'absolute', minutesOfDay: 11 * 60 }, off: { kind: 'absolute', minutesOfDay: 13 * 60 }, days: ['fri'] },
+      next: { ...porchEvening, id: 'next', kind: 'adhoc', on: { kind: 'absolute', minutesOfDay: 12 * 60 + 30 }, off: { kind: 'absolute', minutesOfDay: 14 * 60 }, days: ['fri'] },
+    } });
+    const { events } = buildEventQueue(overlapping, noon, 2);
+    expect(events.map((e) => [e.desiredState, e.at.toFormat('yyyy-MM-dd HH:mm')])).toEqual([
+      ['on', '2026-01-16 11:00'], ['off', '2026-01-16 14:00'],
+    ]);
+    expect(desiredStateAt(overlapping, 'porch', DateTime.fromISO('2026-01-16T13:15', { zone: LA.timezone }))).toBe('on');
+  });
+
+  it('retains an OFF after noon for a cycle opened on the previous solar day', () => {
+    const c = config({ schedules: {
+      s: { ...porchEvening, id: 's', kind: 'adhoc', on: { kind: 'absolute', minutesOfDay: 11 * 60 }, off: { kind: 'absolute', minutesOfDay: 13 * 60 }, days: ['fri'] },
+    } });
+    const from = DateTime.fromISO('2026-01-16T12:15', { zone: LA.timezone });
+    expect(buildEventQueue(c, from, 1).events.map((e) => [e.desiredState, e.at.toFormat('HH:mm')])).toEqual([['off', '13:00']]);
+  });
+
   it('carries the requested time on an event the fence moved', () => {
     const clamped = config({
       constraints: FENCES,

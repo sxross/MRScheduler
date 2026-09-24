@@ -58,22 +58,25 @@ export function buildEventQueue(config: Configuration, from: DateTime, days = 2)
   const events: ScheduledEvent[] = [];
   const adjustments: Adjustment[] = [];
   const blocked: Blocked[] = [];
-  const seen = new Set<string>();
+  const allIntervals: Array<{ deviceId: string; start: DateTime; end: DateTime; scheduleIds: string[]; opening: ResolvedCycle | undefined; closing: ResolvedCycle | undefined }> = [];
 
-  for (let i = 0; i < days; i++) {
+  // Include the preceding solar day: its interval may close after this noon.
+  for (let i = -1; i < days; i++) {
     const day: SolarDay = solarDay(
       first.start.plus({ days: i }).toFormat('yyyy-MM-dd'),
       config.location,
     );
     const resolution = resolveDay(config, day);
-    adjustments.push(...adjustmentsOf(resolution.cycles));
-    for (const u of resolution.unresolved) {
-      blocked.push({
-        scheduleId: u.scheduleId,
-        deviceId: u.deviceId,
-        detail: u.reason,
-        collapsed: u.collapsed,
-      });
+    if (i >= 0) {
+      adjustments.push(...adjustmentsOf(resolution.cycles));
+      for (const u of resolution.unresolved) {
+        blocked.push({
+          scheduleId: u.scheduleId,
+          deviceId: u.deviceId,
+          detail: u.reason,
+          collapsed: u.collapsed,
+        });
+      }
     }
 
     for (const interval of mergeIntervals(resolution.cycles)) {
@@ -81,34 +84,48 @@ export function buildEventQueue(config: Configuration, from: DateTime, days = 2)
       const closing = resolution.cycles.find(
         (c) => interval.scheduleIds.includes(c.scheduleId) && c.intervalEnd === interval.end,
       );
+      allIntervals.push({
+        deviceId: interval.deviceId,
+        start: day.start.plus({ minutes: interval.start }),
+        end: day.start.plus({ minutes: interval.end }),
+        scheduleIds: [...interval.scheduleIds],
+        opening,
+        closing,
+      });
+    }
+  }
 
-      const edges = [
-        { ordinal: interval.start, desiredState: 'on' as const, cycle: opening, side: 'on' as const },
-        { ordinal: interval.end, desiredState: 'off' as const, cycle: closing, side: 'off' as const },
-      ];
+  // Merge across solar-day boundaries as well as within each day. A previous
+  // day's OFF must not switch a device off while today's schedule needs it ON.
+  allIntervals.sort((a, b) => a.start.toMillis() - b.start.toMillis());
+  const merged: typeof allIntervals = [];
+  for (const interval of allIntervals) {
+    const previous = [...merged].reverse().find((item) => item.deviceId === interval.deviceId && item.end >= interval.start);
+    if (!previous) { merged.push(interval); continue; }
+    previous.scheduleIds.push(...interval.scheduleIds);
+    if (interval.end > previous.end) {
+      previous.end = interval.end;
+      previous.closing = interval.closing;
+    }
+  }
 
-      for (const edge of edges) {
-        const at = day.start.plus({ minutes: edge.ordinal });
-        if (at <= from) continue;
-        // Adjacent solar days both cover the boundary; keep one copy.
-        const key = `${interval.deviceId}|${at.toMillis()}|${edge.desiredState}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-
-        const schedule = edge.cycle ? config.schedules[edge.cycle.scheduleId] : undefined;
-        const cycleEdge = edge.cycle?.[edge.side];
-        const event: ScheduledEvent = {
-          deviceId: interval.deviceId,
-          at,
-          desiredState: edge.desiredState,
-          reason: schedule ? describeReason(schedule[edge.side]) : 'Schedule',
-          scheduleIds: [...interval.scheduleIds],
-        };
-        if (cycleEdge?.verdict.status === 'clamped') {
-          event.adjustedFrom = cycleEdge.requestedAt;
-        }
-        events.push(event);
-      }
+  for (const interval of merged) {
+    for (const edge of [
+      { at: interval.start, desiredState: 'on' as const, cycle: interval.opening, side: 'on' as const },
+      { at: interval.end, desiredState: 'off' as const, cycle: interval.closing, side: 'off' as const },
+    ]) {
+      if (edge.at <= from) continue;
+      const schedule = edge.cycle ? config.schedules[edge.cycle.scheduleId] : undefined;
+      const cycleEdge = edge.cycle?.[edge.side];
+      const event: ScheduledEvent = {
+        deviceId: interval.deviceId,
+        at: edge.at,
+        desiredState: edge.desiredState,
+        reason: schedule ? describeReason(schedule[edge.side]) : 'Schedule',
+        scheduleIds: [...new Set(interval.scheduleIds)],
+      };
+      if (cycleEdge?.verdict.status === 'clamped') event.adjustedFrom = cycleEdge.requestedAt;
+      events.push(event);
     }
   }
 
@@ -123,14 +140,12 @@ export function desiredStateAt(
   instant: DateTime,
 ): DesiredState {
   const day = solarDayContaining(instant, config.location);
-  const ordinal = instant.diff(day.start, 'minutes').minutes;
   // An interval opened on the previous solar day can still be running.
   for (const offset of [-1, 0]) {
     const d = solarDay(day.start.plus({ days: offset }).toFormat('yyyy-MM-dd'), config.location);
-    const shift = offset === 0 ? 0 : 1440;
     for (const interval of mergeIntervals(resolveDay(config, d).cycles)) {
       if (interval.deviceId !== deviceId) continue;
-      if (ordinal + shift >= interval.start && ordinal + shift < interval.end) return 'on';
+      if (instant >= d.start.plus({ minutes: interval.start }) && instant < d.start.plus({ minutes: interval.end })) return 'on';
     }
   }
   return 'off';

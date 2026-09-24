@@ -8,7 +8,7 @@
 import type { DateTime } from 'luxon';
 import type { Configuration, Schedule, ScheduleKind, Weekday } from '../model/types';
 import { WEEKDAYS } from '../model/types';
-import { MINUTES_PER_DAY, resolveEndpoint, type SolarDay } from './solarDay';
+import { resolveEndpoint, type SolarDay } from './solarDay';
 import { evaluateTransition, type Verdict } from './constraints';
 
 export interface CycleEdge {
@@ -93,7 +93,7 @@ export function resolveDay(config: Configuration, day: SolarDay): DayResolution 
     const intervalEnd =
       offVerdict.ordinal > onVerdict.ordinal
         ? offVerdict.ordinal
-        : offVerdict.ordinal + MINUTES_PER_DAY;
+        : day.start.plus({ minutes: offVerdict.ordinal }).plus({ days: 1 }).diff(day.start, 'minutes').minutes;
 
     cycles.push({
       scheduleId: schedule.id,

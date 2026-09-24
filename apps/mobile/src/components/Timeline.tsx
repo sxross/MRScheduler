@@ -8,8 +8,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { G, Line, Rect, Text as SvgText } from 'react-native-svg';
-import type { Configuration } from '@mrscheduler/domain';
-import { DEFAULT_VIEWPORT, buildTimeline, clockLabel, ordinalAtX, type Viewport } from '@mrscheduler/timeline';
+import { dayLength, solarDay, type Configuration } from '@mrscheduler/domain';
+import { DEFAULT_VIEWPORT, buildTimeline, ordinalAtX, type Viewport } from '@mrscheduler/timeline';
 import { useTheme } from '../theme';
 
 const BAR_HEIGHT = 16;
@@ -35,10 +35,12 @@ export function Timeline({
   const [width, setWidth] = useState(0);
   const [selectedBar, setSelectedBar] = useState<string | null>(null);
   const [dragPreview, setDragPreview] = useState<{ barKey: string; edge: 'on' | 'off'; x: number; label: string } | null>(null);
+  const day = useMemo(() => solarDay(anchorDate, config.location), [anchorDate, config.location]);
 
   const viewport: Viewport = {
     ...DEFAULT_VIEWPORT,
     width,
+    durationMinutes: dayLength(day),
     padding: LABEL_GUTTER,
     rightPadding: 14,
     headerHeight: HEADER_HEIGHT,
@@ -109,18 +111,19 @@ export function Timeline({
                         const right = preview?.edge === 'off' ? preview.x : baseRight;
                         const bx = Math.min(left, right - 2);
                         const bw = Math.max(right - bx, 2);
-                        const startLabel = preview?.edge === 'on' ? preview.label : shortTime(clockLabel(ordinalAtX(left, viewport)));
+                        const startLabel = preview?.edge === 'on' ? preview.label : shortTime(bar.startLabel);
                         const endLabel = preview?.edge === 'off'
                           ? preview.label
                           : bar.continuesPast
                             ? shortTime(bar.endLabel)
-                            : shortTime(clockLabel(ordinalAtX(right, viewport)));
+                            : shortTime(bar.endLabel);
+                        const schedule = bar.scheduleIds.length === 1 ? config.schedules[bar.scheduleIds[0]!] : undefined;
                         return (
                           <G key={barKey}>
                             <Rect x={bx} y={barY} width={bw} height={BAR_HEIGHT} fill={theme.bar} stroke={selected ? theme.text : 'none'} strokeWidth={selected ? 1.5 : 0} onPress={() => setSelectedBar(selected ? null : barKey)} />
                             {selected && <>
-                              <TrimHandle x={bx} y={centerY} theme={theme} onDrag={bar.scheduleIds.length === 1 ? (x, done) => previewTrim(barKey, bar.scheduleIds[0], 'on', x, viewport, setDragPreview, onTrimSchedule)(done) : undefined} />
-                              {!bar.continuesPast && <TrimHandle x={bx + bw} y={centerY} theme={theme} onDrag={bar.scheduleIds.length === 1 ? (x, done) => previewTrim(barKey, bar.scheduleIds[0], 'off', x, viewport, setDragPreview, onTrimSchedule)(done) : undefined} />}
+                              {schedule?.on.kind === 'absolute' && <TrimHandle x={bx} y={centerY} theme={theme} onDrag={(x, done) => previewTrim(barKey, schedule.id, 'on', x, viewport, day, baseRight, setDragPreview, onTrimSchedule)(done)} />}
+                              {!bar.continuesPast && schedule?.off.kind === 'absolute' && <TrimHandle x={bx + bw} y={centerY} theme={theme} onDrag={(x, done) => previewTrim(barKey, schedule.id, 'off', x, viewport, day, baseLeft, setDragPreview, onTrimSchedule)(done)} />}
                               {bar.continuesPast && <ContinuationMark x={bx + bw} y={centerY} theme={theme} />}
                               <SvgText x={bx + 4} y={barY - 6} fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize={10} fontWeight="600" fill={theme.text}>{startLabel} → {endLabel}</SvgText>
                             </>}
@@ -190,7 +193,7 @@ function TrimHandle({
   } as any) : {};
   return (
     <G {...pointerProps}>
-      <Rect x={x - 16} y={y - 22} width={32} height={44} fill="transparent" pointerEvents="all" />
+      <Rect x={x - 16} y={y - 22} width={32} height={44} fill="transparent" pointerEvents="auto" />
       <Rect x={x - 5} y={y - BAR_HEIGHT / 2 - 4} width={10} height={BAR_HEIGHT + 8} rx={3} fill={theme.surface} stroke={theme.bar} strokeWidth={2} />
       <Line x1={x} y1={y - 5} x2={x} y2={y + 5} stroke={theme.bar} strokeWidth={1.5} />
     </G>
@@ -203,16 +206,21 @@ function previewTrim(
   edge: 'on' | 'off',
   x: number,
   viewport: Viewport,
+  day: ReturnType<typeof solarDay>,
+  oppositeX: number,
   setPreview: (value: { barKey: string; edge: 'on' | 'off'; x: number; label: string } | null) => void,
   commit?: (scheduleId: string, edge: 'on' | 'off', minutesOfDay: number) => void,
 ) {
-  const rawOrdinal = ordinalAtX(x, viewport);
-  const ordinal = Math.round(rawOrdinal);
-  const minutesOfDay = ((ordinal + 720) % 1440 + 1440) % 1440;
-  const h24 = Math.floor(minutesOfDay / 60);
-  const h = h24 % 12 || 12;
-  const label = `${h}:${String(minutesOfDay % 60).padStart(2, '0')} ${h24 < 12 ? 'AM' : 'PM'}`;
-  const snappedX = viewport.padding + (ordinal / 1440) * (viewport.width - viewport.padding - (viewport.rightPadding ?? viewport.padding));
+  const oppositeOrdinal = Math.round(ordinalAtX(oppositeX, viewport));
+  const maxOrdinal = dayLength(day);
+  const ordinal = Math.min(
+    edge === 'on' ? Math.max(0, oppositeOrdinal - 1) : maxOrdinal,
+    Math.max(edge === 'off' ? Math.min(maxOrdinal, oppositeOrdinal + 1) : 0, Math.round(ordinalAtX(x, viewport))),
+  );
+  const at = day.start.plus({ minutes: ordinal });
+  const minutesOfDay = at.hour * 60 + at.minute;
+  const label = at.toFormat('h:mm a');
+  const snappedX = viewport.padding + (ordinal / maxOrdinal) * (viewport.width - viewport.padding - (viewport.rightPadding ?? viewport.padding));
   setPreview({ barKey, edge, x: snappedX, label });
   return (done: boolean) => {
     if (done) {

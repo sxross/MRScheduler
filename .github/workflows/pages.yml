@@ -39,6 +39,8 @@ jobs:
       - name: Export React Native Web
         env:
           EXPO_BASE_URL: /MRScheduler
+          EXPO_PUBLIC_BUILD_HASH: ${{ github.sha }}
+          EXPO_PUBLIC_DEPLOYED_AT: ${{ github.event.head_commit.timestamp }}
         run: npm run export:web --workspace=@mrscheduler/mobile
 
       - name: Configure Pages

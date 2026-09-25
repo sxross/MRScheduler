@@ -51,6 +51,21 @@ describe('the noon-origin scale', () => {
     }
   });
 
+  it('keeps asymmetric insets and DST-length days in the same canonical transform', () => {
+    const dstViewport = {
+      ...viewport,
+      width: 390,
+      padding: 94,
+      rightPadding: 14,
+      durationMinutes: 1380,
+    };
+    expect(xOfOrdinal(0, dstViewport)).toBe(94);
+    expect(xOfOrdinal(1380, dstViewport)).toBe(376);
+    for (const ordinal of [0, 333, 690, 1020, 1380]) {
+      expect(ordinalAtX(xOfOrdinal(ordinal, dstViewport), dstViewport)).toBeCloseTo(ordinal, 6);
+    }
+  });
+
   it('wraps minutes-of-day correctly at both ends', () => {
     expect(minutesOfDayAt(0)).toBe(720);
     expect(minutesOfDayAt(720)).toBe(0);

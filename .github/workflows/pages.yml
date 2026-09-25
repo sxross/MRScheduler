@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - claude/meross-scheduler-prd-edycrr
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - 'AGENTS.md'
   workflow_dispatch:
 
 permissions:

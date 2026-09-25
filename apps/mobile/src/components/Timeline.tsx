@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { G, Line, Rect, Text as SvgText } from 'react-native-svg';
 import { dayLength, solarDay, type Configuration } from '@mrscheduler/domain';
-import { DEFAULT_VIEWPORT, buildTimeline, ordinalAtX, type Viewport } from '@mrscheduler/timeline';
+import { DEFAULT_VIEWPORT, buildTimeline, ordinalAtX, xOfOrdinal, type Viewport } from '@mrscheduler/timeline';
 import { useTheme } from '../theme';
 
 const BAR_HEIGHT = 16;
@@ -220,7 +220,7 @@ function previewTrim(
   const at = day.start.plus({ minutes: ordinal });
   const minutesOfDay = at.hour * 60 + at.minute;
   const label = at.toFormat('h:mm a');
-  const snappedX = viewport.padding + (ordinal / maxOrdinal) * (viewport.width - viewport.padding - (viewport.rightPadding ?? viewport.padding));
+  const snappedX = xOfOrdinal(ordinal, viewport);
   setPreview({ barKey, edge, x: snappedX, label });
   return (done: boolean) => {
     if (done) {

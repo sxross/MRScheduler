@@ -24,6 +24,7 @@ MRScheduler is a React/TypeScript prototype for controlling home-lighting schedu
 - Do not change the schedule data model merely to solve presentation or interaction problems.
 - Keep schedule geometry and its visual representation driven by a single source of truth.
 - Avoid duplicating derived state or layout calculations when they can be centralized.
+- Application and scheduling code must obtain current time and schedule waits through the `Clock` abstraction. Direct wall-clock reads and real sleeps belong only in clock adapters; tests should use controllable time.
 
 ## Verification
 

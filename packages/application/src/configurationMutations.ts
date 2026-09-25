@@ -1,4 +1,4 @@
-import type { Configuration, Schedule } from '@mrscheduler/domain';
+import type { Configuration, Endpoint, Schedule } from '@mrscheduler/domain';
 
 export type ConfigurationMutation = (configuration: Configuration) => Configuration;
 
@@ -63,4 +63,35 @@ export function setScheduleEnabled(
       [scheduleId]: { ...schedule, enabled },
     },
   };
+}
+
+
+export function setScheduleEndpoint(
+  configuration: Configuration,
+  scheduleId: string,
+  edge: 'on' | 'off',
+  endpoint: Endpoint,
+): Configuration {
+  validateEndpoint(endpoint);
+  const schedule = configuration.schedules[scheduleId];
+  if (!schedule) throw new Error(`Unknown schedule: ${scheduleId}`);
+  return {
+    ...configuration,
+    schedules: {
+      ...configuration.schedules,
+      [scheduleId]: { ...schedule, [edge]: endpoint },
+    },
+  };
+}
+
+function validateEndpoint(endpoint: Endpoint): void {
+  if (endpoint.kind === 'absolute') {
+    if (!Number.isInteger(endpoint.minutesOfDay) || endpoint.minutesOfDay < 0 || endpoint.minutesOfDay >= 24 * 60) {
+      throw new RangeError('minutesOfDay must be an integer from 0 through 1439.');
+    }
+    return;
+  }
+  if (!Number.isInteger(endpoint.offsetMinutes)) {
+    throw new RangeError('Astronomical offsetMinutes must be an integer.');
+  }
 }

@@ -3,8 +3,8 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { DateTime } from 'luxon';
-import { solarDayContaining, type Configuration } from '@mrscheduler/domain';
-import { setScheduleEnabled, updateAbsoluteScheduleEndpoint, type ConfigurationMutation } from '@mrscheduler/application';
+import { solarDayContaining, type Configuration, type Endpoint } from '@mrscheduler/domain';
+import { SystemClock, setScheduleEnabled, setScheduleEndpoint, updateAbsoluteScheduleEndpoint, type ConfigurationMutation } from '@mrscheduler/application';
 import { Timeline } from './src/components/Timeline';
 import { UpcomingEvents } from './src/components/UpcomingEvents';
 import { ScheduleList } from './src/components/ScheduleList';
@@ -21,7 +21,8 @@ const BUILD_LABEL = DEPLOYED_AT
 export default function App() {
   const [config, setConfig] = useState<Configuration>(sampleConfig);
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
-  const now = useMemo(() => DateTime.now().setZone(config.location.timezone), [config.location.timezone]);
+  const clock = useMemo(() => new SystemClock(config.location.timezone), [config.location.timezone]);
+  const now = useMemo(() => clock.now(), [clock]);
   const anchorDate = solarDayContaining(now, config.location).anchorDate;
 
   useEffect(() => {
@@ -58,9 +59,12 @@ export default function App() {
   const toggleSchedule = (scheduleId: string, enabled: boolean) =>
     commit((previous) => setScheduleEnabled(previous, scheduleId, enabled));
 
+  const changeEndpoint = (scheduleId: string, edge: 'on' | 'off', endpoint: Endpoint) =>
+    commit((previous) => setScheduleEndpoint(previous, scheduleId, edge, endpoint));
+
   return (
     <SafeAreaProvider>
-      <Screen config={config} now={now} anchorDate={anchorDate} onToggle={toggleSchedule} onTrim={trimSchedule} />
+      <Screen config={config} now={now} anchorDate={anchorDate} onToggle={toggleSchedule} onTrim={trimSchedule} onEndpointChange={changeEndpoint} />
     </SafeAreaProvider>
   );
 }
@@ -71,12 +75,14 @@ function Screen({
   anchorDate,
   onToggle,
   onTrim,
+  onEndpointChange,
 }: {
   config: Configuration;
   now: DateTime;
   anchorDate: string;
   onToggle: (scheduleId: string, enabled: boolean) => void;
   onTrim: (scheduleId: string, edge: 'on' | 'off', minutesOfDay: number) => void;
+  onEndpointChange: (scheduleId: string, edge: 'on' | 'off', endpoint: Endpoint) => void;
 }) {
   const theme = useTheme();
   const webSafeArea = Platform.OS === 'web'
@@ -117,7 +123,7 @@ function Screen({
         </View>
 
         <Text style={[styles.section, { color: theme.text }]}>Schedules</Text>
-        <ScheduleList config={config} onToggle={onToggle} />
+        <ScheduleList config={config} anchorDate={anchorDate} onToggle={onToggle} onEndpointChange={onEndpointChange} />
 
         <View style={styles.footer} />
       </ScrollView>

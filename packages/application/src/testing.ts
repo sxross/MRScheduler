@@ -33,6 +33,13 @@ export class FakeClock implements Clock {
     };
   }
 
+  nextScheduledAt(): DateTime | null {
+    const next = this.tasks
+      .filter((candidate) => !candidate.cancelled)
+      .sort((a, b) => a.at.toMillis() - b.at.toMillis() || a.id - b.id)[0];
+    return next?.at ?? null;
+  }
+
   async advanceTo(target: DateTime): Promise<void> {
     if (target < this.current) throw new Error('FakeClock cannot move backwards.');
 

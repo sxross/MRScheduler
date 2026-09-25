@@ -8,7 +8,7 @@ The primary use case is evening-through-morning scheduling. A conventional midni
 ## Decision
 The primary schedule timeline represents a 24-hour solar day from local noon to the following local noon.
 
-Time-to-position and position-to-time conversion belong to the timeline geometry layer. Intervals crossing the displayed boundaries are clipped for presentation without changing their underlying schedule semantics.
+Time-to-position and position-to-time conversion belong to the timeline geometry layer. Intervals crossing the displayed boundaries are clipped for presentation without changing their underlying schedule semantics. An astronomical endpoint may also resolve outside the displayed noon-to-noon window after its offset is applied; this is valid domain behavior, not an error condition. High and polar latitudes make such cases operationally realistic rather than merely theoretical.
 
 ## Consequences
 - Evening, midnight, and morning form one continuous visual span.

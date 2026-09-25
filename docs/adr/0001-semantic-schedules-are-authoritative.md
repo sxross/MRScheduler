@@ -10,6 +10,8 @@ Persist the user's scheduling intent, not a calculated clock-time snapshot. An e
 
 Calculated times are projections for a particular date and location and are never silently written back as authored schedules.
 
+Astronomical event identity is resolved before applying its signed offset. Offsets may legitimately move the resulting instant across midnight, across the noon-to-noon timeline boundary, or outside the currently displayed solar day. These are not merely pathological edge cases: at high and polar latitudes, astronomical events can occur at extreme local times, making large boundary-crossing offsets a normal consequence of the model. The offset must never cause evaluation to switch silently to a different sunrise, sunset, dawn, or dusk occurrence.
+
 ## Consequences
 - Schedules retain their meaning as daylight changes.
 - The domain model must distinguish absolute and astronomical endpoint kinds.

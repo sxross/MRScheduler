@@ -6,7 +6,7 @@
  * in diagnostics/editing, not as unexplained decorative bars.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Dimensions, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { G, Line, Rect, Text as SvgText } from 'react-native-svg';
 import { dayLength, solarDay, type Configuration } from '@mrscheduler/domain';
 import { DEFAULT_VIEWPORT, buildTimeline, ordinalAtX, xOfOrdinal, type Viewport } from '@mrscheduler/timeline';
@@ -30,8 +30,11 @@ export function Timeline({
   onTrimSchedule?: (scheduleId: string, edge: 'on' | 'off', minutesOfDay: number) => void;
 }) {
   const theme = useTheme();
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const landscape = windowWidth > windowHeight;
+  const [nativeWindow, setNativeWindow] = useState(() =>
+    Platform.OS === 'web' ? { width: 0, height: 0 } : Dimensions.get('window'),
+  );
+  const landscape = nativeWindow.width > nativeWindow.height;
+  const windowHeight = nativeWindow.height;
   const [width, setWidth] = useState(0);
   const [selectedBar, setSelectedBar] = useState<string | null>(null);
   const [dragPreview, setDragPreview] = useState<{ barKey: string; edge: 'on' | 'off'; x: number; label: string } | null>(null);
@@ -46,6 +49,12 @@ export function Timeline({
     headerHeight: HEADER_HEIGHT,
     rowHeight: ROW_HEIGHT,
   };
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const subscription = Dimensions.addEventListener('change', ({ window }) => setNativeWindow(window));
+    return () => subscription.remove();
+  }, []);
+
   // Pointer coordinates are viewport-specific. Never carry an in-flight preview
   // through rotation/resizing; committed schedule state will be reprojected below.
   useEffect(() => { setDragPreview(null); }, [width]);

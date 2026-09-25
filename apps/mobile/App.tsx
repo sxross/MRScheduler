@@ -1,13 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { DateTime } from 'luxon';
 import { solarDayContaining, type Configuration } from '@mrscheduler/domain';
+import { setScheduleEnabled, updateAbsoluteScheduleEndpoint, type ConfigurationMutation } from '@mrscheduler/application';
 import { Timeline } from './src/components/Timeline';
 import { UpcomingEvents } from './src/components/UpcomingEvents';
 import { ScheduleList } from './src/components/ScheduleList';
 import { sampleConfig } from './src/state/sampleConfig';
+import { localConfigurationRepository } from './src/state/localConfigurationRepository';
 import { useTheme } from './src/theme';
 
 const BUILD_HASH = (process.env.EXPO_PUBLIC_BUILD_HASH ?? 'dev').slice(-7);
@@ -18,35 +20,43 @@ const BUILD_LABEL = DEPLOYED_AT
 
 export default function App() {
   const [config, setConfig] = useState<Configuration>(sampleConfig);
-  const now = useMemo(() => DateTime.now().setZone(sampleConfig.location.timezone), []);
+  const saveQueue = useRef<Promise<void>>(Promise.resolve());
+  const now = useMemo(() => DateTime.now().setZone(config.location.timezone), [config.location.timezone]);
   const anchorDate = solarDayContaining(now, config.location).anchorDate;
 
-  const trimSchedule = (scheduleId: string, edge: 'on' | 'off', minutesOfDay: number) =>
+  useEffect(() => {
+    let cancelled = false;
+    void localConfigurationRepository.load()
+      .then(async (persisted) => {
+        if (cancelled) return;
+        if (persisted) {
+          setConfig(persisted);
+          return;
+        }
+        await localConfigurationRepository.save(sampleConfig);
+      })
+      .catch((error) => console.error('Failed to load local configuration', error));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const commit = useCallback((mutation: ConfigurationMutation) => {
     setConfig((previous) => {
-      const schedule = previous.schedules[scheduleId];
-      if (!schedule || schedule[edge].kind !== 'absolute') return previous;
-      const updatedSchedule = {
-        ...schedule,
-        [edge]: { kind: 'absolute' as const, minutesOfDay },
-      };
-      return {
-        ...previous,
-        schedules: {
-          ...previous.schedules,
-          [scheduleId]: updatedSchedule,
-        },
-      };
+      const next = mutation(previous);
+      if (next === previous) return previous;
+      saveQueue.current = saveQueue.current
+        .then(() => localConfigurationRepository.save(next))
+        .catch((error) => console.error('Failed to save local configuration', error));
+      return next;
     });
+  }, []);
+
+  const trimSchedule = (scheduleId: string, edge: 'on' | 'off', minutesOfDay: number) =>
+    commit((previous) => updateAbsoluteScheduleEndpoint(previous, scheduleId, edge, minutesOfDay));
 
   const toggleSchedule = (scheduleId: string, enabled: boolean) =>
-    setConfig((previous) => {
-      const schedule = previous.schedules[scheduleId];
-      if (!schedule) return previous;
-      return {
-        ...previous,
-        schedules: { ...previous.schedules, [scheduleId]: { ...schedule, enabled } },
-      };
-    });
+    commit((previous) => setScheduleEnabled(previous, scheduleId, enabled));
 
   return (
     <SafeAreaProvider>

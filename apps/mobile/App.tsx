@@ -91,42 +91,50 @@ function Screen({
         paddingRight: 'max(16px, env(safe-area-inset-right))',
       } as any)
     : undefined;
+  const content = (
+    <>
+      <Text style={[styles.title, { color: theme.text }]}>Tonight</Text>
+      <View style={styles.subtitleRow}>
+        <Text style={[styles.subtitle, { color: theme.textMuted }]}>
+          {DateTime.fromISO(anchorDate).toFormat('cccc d LLLL')} · noon to noon
+        </Text>
+        <Text style={[styles.build, { color: theme.textMuted }]}>{BUILD_LABEL}</Text>
+      </View>
+
+      <Timeline config={config} anchorDate={anchorDate} onTrimSchedule={onTrim} />
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Add device"
+        style={({ pressed }) => [
+          styles.addDevice,
+          { borderColor: theme.border, backgroundColor: theme.surface, opacity: pressed ? 0.65 : 1 },
+        ]}
+      >
+        <Text style={[styles.addDevicePlus, { color: theme.accent }]}>＋</Text>
+        <Text style={[styles.addDeviceText, { color: theme.text }]}>Add device</Text>
+      </Pressable>
+
+      <Text style={[styles.section, { color: theme.text }]}>Upcoming</Text>
+      <View style={styles.upcomingPreview}>
+        <UpcomingEvents config={config} now={now} />
+      </View>
+
+      <Text style={[styles.section, { color: theme.text }]}>Schedules</Text>
+      <ScheduleList config={config} anchorDate={anchorDate} onToggle={onToggle} onEndpointChange={onEndpointChange} />
+
+      <View style={styles.footer} />
+    </>
+  );
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
-      <ScrollView contentContainerStyle={[styles.content, webSafeArea]}>
-        <Text style={[styles.title, { color: theme.text }]}>Tonight</Text>
-        <View style={styles.subtitleRow}>
-          <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-            {DateTime.fromISO(anchorDate).toFormat('cccc d LLLL')} · noon to noon
-          </Text>
-          <Text style={[styles.build, { color: theme.textMuted }]}>{BUILD_LABEL}</Text>
-        </View>
-
-        <Timeline config={config} anchorDate={anchorDate} onTrimSchedule={onTrim} />
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Add device"
-          style={({ pressed }) => [
-            styles.addDevice,
-            { borderColor: theme.border, backgroundColor: theme.surface, opacity: pressed ? 0.65 : 1 },
-          ]}
-        >
-          <Text style={[styles.addDevicePlus, { color: theme.accent }]}>＋</Text>
-          <Text style={[styles.addDeviceText, { color: theme.text }]}>Add device</Text>
-        </Pressable>
-
-        <Text style={[styles.section, { color: theme.text }]}>Upcoming</Text>
-        <View style={styles.upcomingPreview}>
-          <UpcomingEvents config={config} now={now} />
-        </View>
-
-        <Text style={[styles.section, { color: theme.text }]}>Schedules</Text>
-        <ScheduleList config={config} anchorDate={anchorDate} onToggle={onToggle} onEndpointChange={onEndpointChange} />
-
-        <View style={styles.footer} />
-      </ScrollView>
+      {Platform.OS === 'web' ? (
+        <View style={[styles.content, webSafeArea]}>{content}</View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.content}>{content}</ScrollView>
+      )}
     </SafeAreaView>
   );
 }

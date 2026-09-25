@@ -87,13 +87,8 @@ export function Timeline({
               {sunset && <AstroBoundary x={sunset.x} label="Sunset" time={sunset.time} theme={theme} anchor="end" />}
               {sunrise && <AstroBoundary x={sunrise.x} label="Sunrise" time={sunrise.time} theme={theme} anchor="start" />}
             </Svg>
-            <ScrollView
-              style={{ height: trackViewportHeight }}
-              scrollEnabled={Platform.OS !== 'web'}
-              nestedScrollEnabled={Platform.OS !== 'web'}
-              showsVerticalScrollIndicator={Platform.OS !== 'web'}
-              persistentScrollbar={false}
-            >
+            {Platform.OS === 'web' ? (
+              <View style={{ height: trackContentHeight }}>
               <Svg width={layout.width} height={layout.rows.length * ROW_HEIGHT}>
                 {dusk && dawn && <Rect x={dusk.x} y={0} width={dawn.x - dusk.x} height={layout.rows.length * ROW_HEIGHT} fill={theme.night} />}
                 {layout.ticks.map((tick, i) => (
@@ -139,7 +134,61 @@ export function Timeline({
                   );
                 })}
               </Svg>
-            </ScrollView>
+              </View>
+            ) : (
+              <ScrollView
+                style={{ height: trackViewportHeight }}
+                nestedScrollEnabled
+                showsVerticalScrollIndicator
+                persistentScrollbar={false}
+              >
+              <Svg width={layout.width} height={layout.rows.length * ROW_HEIGHT}>
+                {dusk && dawn && <Rect x={dusk.x} y={0} width={dawn.x - dusk.x} height={layout.rows.length * ROW_HEIGHT} fill={theme.night} />}
+                {layout.ticks.map((tick, i) => (
+                  <Line key={`body-tick-${i}`} x1={tick.x} y1={0} x2={tick.x} y2={layout.rows.length * ROW_HEIGHT} stroke={theme.gridline} strokeWidth={tick.major ? 1 : StyleSheet.hairlineWidth} />
+                ))}
+                {layout.rows.map((row) => {
+                  const centerY = row.y - HEADER_HEIGHT + row.height / 2;
+                  const barY = centerY - BAR_HEIGHT / 2;
+                  return (
+                    <G key={row.deviceId} onPress={() => onSelectDevice?.(row.deviceId)}>
+                      <SvgText x={14} y={centerY + 4} fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize={12} fontWeight="600" fill={theme.text}>{row.name}</SvgText>
+                      {row.bars.map((bar, i) => {
+                        const barKey = `${row.deviceId}:${bar.scheduleIds.join(',')}:${i}`;
+                        const selected = selectedBar === barKey;
+                        const baseLeft = Math.round(bar.x);
+                        const baseRight = Math.round(bar.x + bar.width);
+                        const preview = dragPreview?.barKey === barKey ? dragPreview : null;
+                        const left = preview?.edge === 'on' ? preview.x : baseLeft;
+                        const right = preview?.edge === 'off' ? preview.x : baseRight;
+                        const bx = Math.min(left, right - 2);
+                        const bw = Math.max(right - bx, 2);
+                        const startLabel = preview?.edge === 'on' ? preview.label : shortTime(bar.startLabel);
+                        const endLabel = preview?.edge === 'off'
+                          ? preview.label
+                          : bar.continuesPast
+                            ? shortTime(bar.endLabel)
+                            : shortTime(bar.endLabel);
+                        const schedule = bar.scheduleIds.length === 1 ? config.schedules[bar.scheduleIds[0]!] : undefined;
+                        return (
+                          <G key={barKey}>
+                            <Rect x={bx} y={barY} width={bw} height={BAR_HEIGHT} fill={theme.bar} stroke={selected ? theme.text : 'none'} strokeWidth={selected ? 1.5 : 0} onPress={() => setSelectedBar(selected ? null : barKey)} />
+                            {selected && <>
+                              {schedule?.on.kind === 'absolute' && <TrimHandle x={bx} y={centerY} theme={theme} onDrag={(x, done) => previewTrim(barKey, schedule.id, 'on', x, viewport, day, baseRight, setDragPreview, onTrimSchedule)(done)} />}
+                              {!bar.continuesPast && schedule?.off.kind === 'absolute' && <TrimHandle x={bx + bw} y={centerY} theme={theme} onDrag={(x, done) => previewTrim(barKey, schedule.id, 'off', x, viewport, day, baseLeft, setDragPreview, onTrimSchedule)(done)} />}
+                              {bar.continuesPast && <ContinuationMark x={bx + bw} y={centerY} theme={theme} />}
+                              <SvgText x={bx + 4} y={barY - 6} fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize={10} fontWeight="600" fill={theme.text}>{startLabel} → {endLabel}</SvgText>
+                            </>}
+                          </G>
+                        );
+                      })}
+                      {row.blocked.length > 0 && <SvgText x={LABEL_GUTTER} y={centerY + 4} fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" fontSize={11} fill={theme.warning}>Cannot run today</SvgText>}
+                    </G>
+                  );
+                })}
+              </Svg>
+              </ScrollView>
+            )}
           </>
         )}
       </View>

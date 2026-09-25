@@ -38,6 +38,33 @@ describe('the noon-origin axis', () => {
     expect(plain.ok && early.ok && plain.ordinal - early.ordinal).toBeCloseTo(20, 6);
   });
 
+  it('keeps the same sunset occurrence when a positive offset crosses midnight', () => {
+    const summer = solarDay('2026-06-15', LA);
+    const plain = resolveEndpoint({ kind: 'astro', event: 'sunset', offsetMinutes: 0 }, summer, LA);
+    const late = resolveEndpoint({ kind: 'astro', event: 'sunset', offsetMinutes: 5 * 60 }, summer, LA);
+    expect(plain.ok).toBe(true);
+    expect(late.ok).toBe(true);
+    if (!plain.ok || !late.ok) return;
+
+    expect(late.at.toMillis()).toBe(plain.at.plus({ hours: 5 }).toMillis());
+    expect(late.at.day).not.toBe(plain.at.day);
+    expect(late.ordinal - plain.ordinal).toBeCloseTo(5 * 60, 6);
+  });
+
+  it('keeps the following sunrise occurrence when a positive offset crosses solar noon', () => {
+    const winter = solarDay('2026-01-15', LA);
+    const plain = resolveEndpoint({ kind: 'astro', event: 'sunrise', offsetMinutes: 0 }, winter, LA);
+    const late = resolveEndpoint({ kind: 'astro', event: 'sunrise', offsetMinutes: 6 * 60 }, winter, LA);
+    expect(plain.ok).toBe(true);
+    expect(late.ok).toBe(true);
+    if (!plain.ok || !late.ok) return;
+
+    expect(plain.at < winter.end).toBe(true);
+    expect(late.at > winter.end).toBe(true);
+    expect(late.at.toMillis()).toBe(plain.at.plus({ hours: 6 }).toMillis());
+    expect(late.ordinal - plain.ordinal).toBeCloseTo(6 * 60, 6);
+  });
+
   it('assigns an instant to the solar day whose noon precedes it', () => {
     const beforeNoon = DateTime.fromISO('2026-01-16T06:42', { zone: LA.timezone });
     expect(solarDayContaining(beforeNoon, LA).anchorDate).toBe('2026-01-15');

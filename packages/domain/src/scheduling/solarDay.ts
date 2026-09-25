@@ -82,15 +82,19 @@ export function resolveEndpoint(
 
   const candidates = [day.start, day.start.plus({ days: 1 })]
     .map((noon) => astroTime(endpoint.event, noon, location))
-    .filter((t): t is DateTime => t !== null)
-    .map((t) => t.plus({ minutes: endpoint.offsetMinutes }));
+    .filter((t): t is DateTime => t !== null);
 
-  const base = candidates.find((t) => t >= day.start && t < day.end) ?? candidates[0];
-  if (!base) {
+  // Choose the astronomical occurrence that belongs to this solar day before
+  // applying its authored offset. Otherwise a sufficiently large offset can
+  // make the previous/next occurrence appear to be inside the window and
+  // silently change the semantic anchor.
+  const anchor = candidates.find((t) => t >= day.start && t < day.end) ?? candidates[0];
+  if (!anchor) {
     return {
       ok: false,
       reason: `${endpoint.event} does not occur at this latitude on ${day.anchorDate}`,
     };
   }
-  return { ok: true, at: base, ordinal: ordinalOf(base, day) };
+  const at = anchor.plus({ minutes: endpoint.offsetMinutes });
+  return { ok: true, at, ordinal: ordinalOf(at, day) };
 }

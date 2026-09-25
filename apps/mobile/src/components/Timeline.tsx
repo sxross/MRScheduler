@@ -6,7 +6,7 @@
  * in diagnostics/editing, not as unexplained decorative bars.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { G, Line, Rect, Text as SvgText } from 'react-native-svg';
 import { dayLength, solarDay, type Configuration } from '@mrscheduler/domain';
 import { DEFAULT_VIEWPORT, buildTimeline, ordinalAtX, xOfOrdinal, type Viewport } from '@mrscheduler/timeline';
@@ -60,9 +60,12 @@ export function Timeline({
   const dusk = layout?.astro.find((a) => a.event === 'dusk');
   const dawn = layout?.astro.find((a) => a.event === 'dawn');
 
-  const trackViewportHeight = landscape
-    ? Math.min(layout?.rows.length ? layout.rows.length * ROW_HEIGHT : 0, ROW_HEIGHT * 3.5)
-    : Math.min(layout?.rows.length ? layout.rows.length * ROW_HEIGHT : 0, Math.max(ROW_HEIGHT * 4.5, Math.min(ROW_HEIGHT * 6.5, windowHeight * 0.34)));
+  const trackContentHeight = layout?.rows.length ? layout.rows.length * ROW_HEIGHT : 0;
+  const trackViewportHeight = Platform.OS === 'web'
+    ? trackContentHeight
+    : landscape
+      ? Math.min(trackContentHeight, ROW_HEIGHT * 3.5)
+      : Math.min(trackContentHeight, Math.max(ROW_HEIGHT * 4.5, Math.min(ROW_HEIGHT * 6.5, windowHeight * 0.34)));
 
   return (
     <View>
@@ -86,8 +89,9 @@ export function Timeline({
             </Svg>
             <ScrollView
               style={{ height: trackViewportHeight }}
-              nestedScrollEnabled
-              showsVerticalScrollIndicator
+              scrollEnabled={Platform.OS !== 'web'}
+              nestedScrollEnabled={Platform.OS !== 'web'}
+              showsVerticalScrollIndicator={Platform.OS !== 'web'}
               persistentScrollbar={false}
             >
               <Svg width={layout.width} height={layout.rows.length * ROW_HEIGHT}>

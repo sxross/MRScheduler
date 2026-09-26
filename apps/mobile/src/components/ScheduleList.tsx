@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import {
   ASTRO_EVENTS,
@@ -24,23 +23,20 @@ const EVENT_LABEL: Record<AstroEventName, string> = {
 
 export function ScheduleList({
   config,
-  anchorDate,
+  selectedScheduleId,
   onToggle,
-  onEndpointChange,
   onSelect,
 }: {
   config: Configuration;
-  anchorDate: string;
+  selectedScheduleId: string | null;
   onToggle: (scheduleId: string, enabled: boolean) => void;
-  onEndpointChange: (scheduleId: string, edge: 'on' | 'off', endpoint: Endpoint) => void;
-  onSelect?: (scheduleId: string) => void;
+  onSelect: (scheduleId: string) => void;
 }) {
   const theme = useTheme();
-  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
   const byDevice = new Map<string, Schedule[]>();
   for (const schedule of Object.values(config.schedules)) {
-    const list = byDevice.get(schedule.deviceId);
-    if (list) list.push(schedule);
+    const schedules = byDevice.get(schedule.deviceId);
+    if (schedules) schedules.push(schedule);
     else byDevice.set(schedule.deviceId, [schedule]);
   }
 
@@ -51,60 +47,73 @@ export function ScheduleList({
           <Text style={[styles.device, { color: theme.textMuted }]}>
             {config.devices[deviceId]?.name ?? deviceId}
           </Text>
-          {schedules.map((schedule) => {
-            const selected = selectedScheduleId === schedule.id;
-            return (
-              <View key={schedule.id}>
-                <Pressable
-                  onPress={() => {
-                    setSelectedScheduleId(selected ? null : schedule.id);
-                    onSelect?.(schedule.id);
-                  }}
-                  style={[styles.row, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                >
-                  <View style={styles.text}>
-                    <Text style={[styles.summary, { color: theme.text }]}>
-                      {describeSchedule(schedule)}
-                    </Text>
-                    {(schedule.kind ?? 'governed') === 'adhoc' && (
-                      <Text style={[styles.tag, { color: theme.accent }]}>AD-HOC</Text>
-                    )}
-                  </View>
-                  <Switch
-                    value={schedule.enabled}
-                    onValueChange={(next) => onToggle(schedule.id, next)}
-                  />
-                </Pressable>
-                {selected && (
-                  <View style={[styles.editor, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                    <EndpointEditor
-                      label="On"
-                      endpoint={schedule.on}
-                      edge="on"
-                      config={config}
-                      anchorDate={anchorDate}
-                      onChange={(endpoint) => onEndpointChange(schedule.id, 'on', endpoint)}
-                    />
-                    <EndpointEditor
-                      label="Off"
-                      endpoint={schedule.off}
-                      edge="off"
-                      config={config}
-                      anchorDate={anchorDate}
-                      onChange={(endpoint) => onEndpointChange(schedule.id, 'off', endpoint)}
-                    />
-                  </View>
+          {schedules.map((schedule) => (
+            <Pressable
+              key={schedule.id}
+              onPress={() => onSelect(schedule.id)}
+              style={[
+                styles.row,
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: selectedScheduleId === schedule.id ? theme.accent : theme.border,
+                },
+              ]}
+            >
+              <View style={styles.text}>
+                <Text style={[styles.summary, { color: theme.text }]}>
+                  {describeSchedule(schedule)}
+                </Text>
+                {(schedule.kind ?? 'governed') === 'adhoc' && (
+                  <Text style={[styles.tag, { color: theme.accent }]}>AD-HOC</Text>
                 )}
               </View>
-            );
-          })}
+              <Switch
+                value={schedule.enabled}
+                onValueChange={(next) => onToggle(schedule.id, next)}
+              />
+            </Pressable>
+          ))}
         </View>
       ))}
     </View>
   );
 }
 
-function EndpointEditor({
+export function ScheduleEditor({
+  config,
+  anchorDate,
+  schedule,
+  onEndpointChange,
+}: {
+  config: Configuration;
+  anchorDate: string;
+  schedule: Schedule;
+  onEndpointChange: (scheduleId: string, edge: 'on' | 'off', endpoint: Endpoint) => void;
+}) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.editor, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+      <EndpointEditor
+        label="On"
+        endpoint={schedule.on}
+        edge="on"
+        config={config}
+        anchorDate={anchorDate}
+        onChange={(endpoint) => onEndpointChange(schedule.id, 'on', endpoint)}
+      />
+      <EndpointEditor
+        label="Off"
+        endpoint={schedule.off}
+        edge="off"
+        config={config}
+        anchorDate={anchorDate}
+        onChange={(endpoint) => onEndpointChange(schedule.id, 'off', endpoint)}
+      />
+    </View>
+  );
+}
+
+export function EndpointEditor({
   label,
   endpoint,
   edge,

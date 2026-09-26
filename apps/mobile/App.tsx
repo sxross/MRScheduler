@@ -7,7 +7,7 @@ import { solarDayContaining, type Configuration, type Endpoint } from '@mrschedu
 import { SystemClock, setScheduleEnabled, setScheduleEndpoint, updateAbsoluteScheduleEndpoint, type ConfigurationMutation } from '@mrscheduler/application';
 import { Timeline } from './src/components/Timeline';
 import { UpcomingEvents } from './src/components/UpcomingEvents';
-import { ScheduleList } from './src/components/ScheduleList';
+import { ScheduleEditor, ScheduleList } from './src/components/ScheduleList';
 import { sampleConfig } from './src/state/sampleConfig';
 import { localConfigurationRepository } from './src/state/localConfigurationRepository';
 import { useTheme } from './src/theme';
@@ -85,6 +85,8 @@ function Screen({
   onEndpointChange: (scheduleId: string, edge: 'on' | 'off', endpoint: Endpoint) => void;
 }) {
   const theme = useTheme();
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
+  const selectedSchedule = selectedScheduleId ? config.schedules[selectedScheduleId] : undefined;
   const webSafeArea = Platform.OS === 'web'
     ? ({
         paddingLeft: 'max(16px, env(safe-area-inset-left))',
@@ -93,35 +95,56 @@ function Screen({
     : undefined;
   const content = (
     <>
-      <Text style={[styles.title, { color: theme.text }]}>Tonight</Text>
-      <View style={styles.subtitleRow}>
-        <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-          {DateTime.fromISO(anchorDate).toFormat('cccc d LLLL')} · noon to noon
-        </Text>
-        <Text style={[styles.build, { color: theme.textMuted }]}>{BUILD_LABEL}</Text>
+      <View style={[styles.sectionContainer, { backgroundColor: theme.background }]}>
+        <Text style={[styles.title, { color: theme.text }]}>Tonight</Text>
+        <View style={styles.subtitleRow}>
+          <Text style={[styles.subtitle, { color: theme.textMuted }]}>
+            {DateTime.fromISO(anchorDate).toFormat('cccc d LLLL')} · noon to noon
+          </Text>
+          <Text style={[styles.build, { color: theme.textMuted }]}>{BUILD_LABEL}</Text>
+        </View>
+        <Timeline config={config} anchorDate={anchorDate} onTrimSchedule={onTrim} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Add device"
+          style={({ pressed }) => [
+            styles.addDevice,
+            { borderColor: theme.border, backgroundColor: theme.surface, opacity: pressed ? 0.65 : 1 },
+          ]}
+        >
+          <Text style={[styles.addDevicePlus, { color: theme.accent }]}>＋</Text>
+          <Text style={[styles.addDeviceText, { color: theme.text }]}>Add device</Text>
+        </Pressable>
       </View>
 
-      <Timeline config={config} anchorDate={anchorDate} onTrimSchedule={onTrim} />
+      {selectedSchedule && (
+        <View style={[styles.sectionContainer, { backgroundColor: theme.background }]}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Edit schedule</Text>
+          <ScheduleEditor
+            config={config}
+            anchorDate={anchorDate}
+            schedule={selectedSchedule}
+            onEndpointChange={onEndpointChange}
+          />
+        </View>
+      )}
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Add device"
-        style={({ pressed }) => [
-          styles.addDevice,
-          { borderColor: theme.border, backgroundColor: theme.surface, opacity: pressed ? 0.65 : 1 },
-        ]}
-      >
-        <Text style={[styles.addDevicePlus, { color: theme.accent }]}>＋</Text>
-        <Text style={[styles.addDeviceText, { color: theme.text }]}>Add device</Text>
-      </Pressable>
-
-      <Text style={[styles.section, { color: theme.text }]}>Upcoming</Text>
-      <View style={styles.upcomingPreview}>
+      <View style={[styles.sectionContainer, { backgroundColor: theme.background }]}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Upcoming</Text>
         <UpcomingEvents config={config} now={now} />
       </View>
 
-      <Text style={[styles.section, { color: theme.text }]}>Schedules</Text>
-      <ScheduleList config={config} anchorDate={anchorDate} onToggle={onToggle} onEndpointChange={onEndpointChange} />
+      <View style={[styles.sectionContainer, { backgroundColor: theme.background }]}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Schedules</Text>
+        <ScheduleList
+          config={config}
+          selectedScheduleId={selectedScheduleId}
+          onToggle={onToggle}
+          onSelect={(scheduleId) => setSelectedScheduleId(
+            selectedScheduleId === scheduleId ? null : scheduleId,
+          )}
+        />
+      </View>
 
       <View style={styles.footer} />
     </>
@@ -141,12 +164,14 @@ function Screen({
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  content: { padding: 16 },
+  content: { paddingVertical: 16 },
+  sectionContainer: { paddingHorizontal: 16, paddingVertical: 12 },
   title: { fontSize: 30, fontWeight: '700' },
   subtitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2, marginBottom: 16 },
   subtitle: { fontSize: 13 },
   build: { fontSize: 10, fontFamily: 'monospace', opacity: 0.7 },
   section: { fontSize: 18, fontWeight: '600', marginTop: 28, marginBottom: 4 },
+  sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
   addDevice: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
@@ -160,6 +185,5 @@ const styles = StyleSheet.create({
   },
   addDevicePlus: { fontSize: 17, lineHeight: 18, fontWeight: '600' },
   addDeviceText: { fontSize: 13, fontWeight: '600' },
-  upcomingPreview: { maxHeight: 260, overflow: 'hidden' },
   footer: { height: 48 },
 });

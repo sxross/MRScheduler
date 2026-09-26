@@ -2,7 +2,7 @@
 
 ## Project
 
-MRScheduler is a React/TypeScript prototype for controlling home-lighting schedules. It is deployed to GitHub Pages and is intended to work well on touch devices, especially iPhone, in both portrait and landscape orientations.
+MRScheduler is a React/TypeScript + React Native application for controlling home-lighting schedules. Native iOS is the authoritative interaction and HITL target. GitHub Pages remains a useful visual/smoke-test surface, but mobile-web behavior is not the interaction conformance target.
 
 ## Product principles
 
@@ -24,6 +24,7 @@ MRScheduler is a React/TypeScript prototype for controlling home-lighting schedu
 - Do not change the schedule data model merely to solve presentation or interaction problems.
 - Keep schedule geometry and its visual representation driven by a single source of truth.
 - Avoid duplicating derived state or layout calculations when they can be centralized.
+- Application and scheduling code must obtain current time and schedule waits through the `Clock` abstraction. Direct wall-clock reads and real sleeps belong only in clock adapters; tests should use controllable time.
 
 ## Verification
 
@@ -31,6 +32,6 @@ Before considering a change complete:
 
 - Run the existing test suite and resolve regressions caused by the change.
 - Run the production build and resolve TypeScript/build errors.
-- Verify that GitHub Pages deployment behavior remains intact.
-- For schedule UI changes, verify both portrait and landscape behavior.
-- For interaction changes, verify touch behavior and ensure controls do not accidentally select page text.
+- Verify that GitHub Pages deployment behavior remains intact as a smoke test.
+- For schedule UI changes, verify both portrait and landscape behavior on native iOS.
+- For interaction changes, verify touch/scroll behavior on native iOS. Web interaction issues should be recorded, but should not override correct native behavior unless the web surface is explicitly in scope.

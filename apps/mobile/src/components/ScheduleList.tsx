@@ -1,3 +1,4 @@
+import { Fragment, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import {
   ASTRO_EVENTS,
@@ -26,9 +27,12 @@ export function ScheduleList({
   selectedScheduleId,
   onToggle,
   onSelect,
+  editor,
 }: {
   config: Configuration;
   selectedScheduleId: string | null;
+  /** Shown directly under the selected row, so it opens where the user tapped. */
+  editor?: ReactNode;
   onToggle: (scheduleId: string, enabled: boolean) => void;
   onSelect: (scheduleId: string) => void;
 }) {
@@ -48,8 +52,8 @@ export function ScheduleList({
             {config.devices[deviceId]?.name ?? deviceId}
           </Text>
           {schedules.map((schedule) => (
+            <Fragment key={schedule.id}>
             <Pressable
-              key={schedule.id}
               onPress={() => onSelect(schedule.id)}
               style={[
                 styles.row,
@@ -72,6 +76,8 @@ export function ScheduleList({
                 onValueChange={(next) => onToggle(schedule.id, next)}
               />
             </Pressable>
+            {selectedScheduleId === schedule.id && editor}
+            </Fragment>
           ))}
         </View>
       ))}

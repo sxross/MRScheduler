@@ -5,19 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0e0e11" />
     <style>
-      html, body, #root { width: 100%; min-height: 100%; margin: 0; }
-      html, body {
+      html, body, #root { width: 100%; margin: 0; }
+      html { min-height: 100%; background: #0e0e11; }
+      body {
+        min-height: 100%;
         background: #0e0e11;
         overscroll-behavior-y: none;
         overflow-x: hidden;
-      }
-      body {
-        min-height: 100dvh;
         -webkit-user-select: none;
         user-select: none;
         -webkit-touch-callout: none;
       }
-      #root { min-height: 100dvh; }
+      #root { min-height: 100%; }
     </style>
   </head>
   <body><div id="root"></div></body>

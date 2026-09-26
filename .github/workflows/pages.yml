@@ -3,7 +3,7 @@ name: Deploy web prototype to GitHub Pages
 on:
   push:
     branches:
-      - claude/meross-scheduler-prd-edycrr
+      - main
     paths-ignore:
       - 'docs/**'
       - 'README.md'

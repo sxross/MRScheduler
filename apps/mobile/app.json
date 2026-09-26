@@ -3,7 +3,7 @@
     "name": "MRScheduler",
     "slug": "mrscheduler",
     "version": "0.1.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "scheme": "mrscheduler",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,

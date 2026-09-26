@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { DateTime } from 'luxon';
@@ -22,7 +22,28 @@ export default function App() {
   const [config, setConfig] = useState<Configuration>(sampleConfig);
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const clock = useMemo(() => new SystemClock(config.location.timezone), [config.location.timezone]);
-  const now = useMemo(() => clock.now(), [clock]);
+  const [now, setNow] = useState(() => clock.now());
+
+  // Re-read the clock each minute so "Tonight" rolls over at noon and Upcoming
+  // stays current; iOS suspends timers in the background, so also refresh on resume.
+  useEffect(() => {
+    let cancel = () => {};
+    const tick = () => {
+      const current = clock.now();
+      setNow(current);
+      cancel = clock.schedule(current.startOf('minute').plus({ minutes: 1 }), tick);
+    };
+    tick();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      cancel();
+      tick();
+    });
+    return () => {
+      cancel();
+      subscription.remove();
+    };
+  }, [clock]);
   const anchorDate = solarDayContaining(now, config.location).anchorDate;
 
   useEffect(() => {

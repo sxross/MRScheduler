@@ -1,10 +1,10 @@
 # Project status and decisions
 
-Last updated 2026-09-25.
+Last updated 2026-09-27.
 
 ## Current phase
 
-Slices 0 and 1 are complete. Slice 2 has its domain/application work implemented and is awaiting authoritative native-iOS HITL before closure.
+Slices 0, 1, and 2 are complete. Slice 2 closed after passing native-iOS HITL on 2026-09-27. Slice 3 is next.
 
 The browser prototype remains deployed for quick visual review and CI smoke testing, but mobile web is no longer the interaction-conformance target. Repeated testing across Safari, Brave, and Chrome showed unstable mobile-web scrolling/layout behavior even after removing nested scroll surfaces, dynamic viewport subscriptions, dynamic viewport units, and after simplifying the page into independent natural-height sections.
 
@@ -23,9 +23,7 @@ Slice 2 adds astronomical endpoint identity and signed-offset editing. Tests pro
 
 ## Interaction validation
 
-The next authoritative HITL pass will run the same Expo/React Native client on iOS through Xcode / Expo Dev Client.
-
-The Slice 2 native HITL should verify:
+Slice 2 native HITL passed on 2026-09-27 on the iPhone 17 Pro Max simulator (iOS 27.0, Xcode 27, Expo Dev Client). It verified:
 
 1. normal vertical scrolling,
 2. schedule selection and editor presentation,
@@ -36,6 +34,10 @@ The Slice 2 native HITL should verify:
 7. portrait and landscape behavior.
 
 The current web layout is intentionally simplified into separate natural-height sections (timeline, editor, upcoming events, schedules) to aid diagnosis. It should not be treated as final product presentation.
+
+### iOS 27 scene life cycle
+
+iOS 27 refuses to launch apps that have not adopted the UIScene life cycle. Expo SDK 57 ships `ExpoAppSceneDelegate`, but its prebuild template does not wire it up. `apps/mobile/plugins/withSceneLifecycle.js` does so at prebuild time, so the generated (gitignored) `ios/` project stays correct after `expo prebuild --clean`. Remove the plugin once Expo's template adopts scenes itself.
 
 ## Runtime architecture
 
@@ -70,4 +72,4 @@ Cloud synchronization is configuration transport, not the execution path. The ap
 
 ## Next step
 
-Pull `main` on the Mac, install dependencies, generate/build the iOS app with Expo/Xcode, and perform the Slice 2 native HITL. If native scrolling and editing behave correctly, close Slice 2 and proceed to Slice 3.
+Slice 3 — multiple authored schedules and effective union (see `FEATURES.md`). Exit: ending one schedule cannot turn a device off while another still requires it ON. Start test-first in `packages/domain` and `packages/application` before UI work.

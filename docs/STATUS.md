@@ -48,7 +48,7 @@ iOS configuration UI
 Firebase configuration sync
         |
         v
-Mac local scheduler service
+Local appliance scheduler service
         |
         v
 SmartDeviceTransport
@@ -57,7 +57,7 @@ SmartDeviceTransport
 local smart device
 ```
 
-Cloud synchronization is configuration transport, not the execution path. The Mac service must execute from durable local configuration when WAN/cloud connectivity is unavailable.
+Cloud synchronization is configuration transport, not the execution path. The appliance service must execute from durable local configuration when WAN/cloud connectivity is unavailable. Linux is the preferred production host for a dedicated always-on appliance; macOS remains a supported development/runtime environment.
 
 ## Engineering constraints
 

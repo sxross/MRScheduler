@@ -25,6 +25,7 @@ MRScheduler is a React/TypeScript + React Native application for controlling hom
 - Keep schedule geometry and its visual representation driven by a single source of truth.
 - Avoid duplicating derived state or layout calculations when they can be centralized.
 - Application and scheduling code must obtain current time and schedule waits through the `Clock` abstraction. Direct wall-clock reads and real sleeps belong only in clock adapters; tests should use controllable time.
+- The scheduler service must remain platform-neutral at its application boundary. Do not make scheduling, persistence, or transport semantics depend on macOS/launchd or Linux/systemd; platform service managers belong in deployment adapters.
 
 ## Verification
 

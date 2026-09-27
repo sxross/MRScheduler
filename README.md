@@ -91,16 +91,18 @@ time to run -- is reported as blocked rather than wrapped into a 24-hour ON.
 
 ## Intended runtime architecture
 
-Once UI prototyping stabilizes, the Mac will run a `launchd` daemon holding the
-scheduler, local configuration cache, and device controller. A GUI layers on top
-over a local API rather than embedding the scheduler, so the house keeps running
-whether or not anything is on screen.
+Once UI prototyping stabilizes, an always-on local appliance service will hold the
+scheduler, local configuration cache, and device controller. The service is
+platform-neutral at the application boundary; Linux is the preferred production
+host for a dedicated appliance, while macOS remains supported for development and
+compatible runtime use. A GUI layers on top over a local API rather than embedding
+the scheduler, so the house keeps running whether or not anything is on screen.
 
-Firebase Realtime Database will synchronize configuration between the daemon and
-iOS; it will never execute device commands.
+Firebase Realtime Database will synchronize configuration between the appliance
+service and iOS; it will never execute device commands.
 
-The daemon will boot from a local configuration snapshot so Firebase or Internet
-availability is not required for an already-synchronized schedule.
+The appliance service will boot from a local configuration snapshot so Firebase or
+Internet availability is not required for an already-synchronized schedule.
 
 See [docs/STATUS.md](docs/STATUS.md) for the current project state and next steps.
 Historical Meross research is retained in [docs/history/MEROSS.md](docs/history/MEROSS.md).

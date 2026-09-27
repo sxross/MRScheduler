@@ -12,7 +12,7 @@ The primary interaction is:
 
 > Find the device. See when it is on. Grab either end and move it.
 
-The timeline is the primary schedule editor. Schedules may use absolute clock endpoints or astronomical endpoints with offsets. The Mac executes the last synchronized configuration locally; cloud availability is not required for an already-known schedule to run.
+The timeline is the primary schedule editor. Schedules may use absolute clock endpoints or astronomical endpoints with offsets. A local appliance service executes the last synchronized configuration; cloud availability is not required for an already-known schedule to run.
 
 ## Feature boundaries
 
@@ -153,11 +153,11 @@ Replacing the fake transport with a real transport requires no scheduling-domain
 
 ### F7. Configuration persistence and synchronization
 
-Makes configuration durable and available to the iPhone and Mac without putting cloud services in the execution path.
+Makes configuration durable and available to the iPhone and local appliance service without putting cloud services in the execution path.
 
 **V1**
 - Firebase/Firestore as current cloud synchronization implementation.
-- Durable Mac-local configuration cache.
+- Durable appliance-local configuration cache.
 - Initial synchronization.
 - Incremental configuration updates.
 - Version/schema identification.
@@ -167,13 +167,13 @@ Makes configuration durable and available to the iPhone and Mac without putting 
 - Basic observability of sync state/errors.
 
 **Acceptance**
-Disconnect Internet after successful synchronization, restart the Mac service, and verify the correct schedule continues to execute.
+Disconnect Internet after successful synchronization, restart the appliance service, and verify the correct schedule continues to execute.
 
 ---
 
-### F8. Mac scheduler service
+### F8. Local appliance scheduler service
 
-The always-on operational host.
+The always-on operational host. Production deployment should be platform-neutral at the application boundary, with Linux preferred for a dedicated appliance and macOS supported for development and compatible runtime use.
 
 **V1**
 - Start automatically/reliably.
@@ -300,9 +300,9 @@ Build/finish:
 
 **Exit:** Reordering or renaming a device never changes schedule ownership.
 
-### Slice 6 — Mac operational service
+### Slice 6 — Local appliance operational service
 
-**Scenario:** Move execution out of the interactive client into the Mac service.
+**Scenario:** Move execution out of the interactive client into an always-on local appliance service.
 
 Build/finish:
 - durable configuration cache,
@@ -311,11 +311,11 @@ Build/finish:
 - logging,
 - retry/reconciliation behavior.
 
-**Exit:** Mac restart with no Internet restores the correct desired state and future transitions from local data.
+**Exit:** Appliance restart with no Internet restores the correct desired state and future transitions from local data.
 
 ### Slice 7 — Firebase configuration synchronization
 
-**Scenario:** Edit a schedule on iPhone and have the Mac adopt it.
+**Scenario:** Edit a schedule on iPhone and have the local appliance adopt it.
 
 Build/finish:
 - Firestore adapter,

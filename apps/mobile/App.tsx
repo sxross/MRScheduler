@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { DateTime } from 'luxon';
@@ -22,7 +22,28 @@ export default function App() {
   const [config, setConfig] = useState<Configuration>(sampleConfig);
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const clock = useMemo(() => new SystemClock(config.location.timezone), [config.location.timezone]);
-  const now = useMemo(() => clock.now(), [clock]);
+  const [now, setNow] = useState(() => clock.now());
+
+  // Re-read the clock each minute so "Tonight" rolls over at noon and Upcoming
+  // stays current; iOS suspends timers in the background, so also refresh on resume.
+  useEffect(() => {
+    let cancel = () => {};
+    const tick = () => {
+      const current = clock.now();
+      setNow(current);
+      cancel = clock.schedule(current.startOf('minute').plus({ minutes: 1 }), tick);
+    };
+    tick();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      cancel();
+      tick();
+    });
+    return () => {
+      cancel();
+      subscription.remove();
+    };
+  }, [clock]);
   const anchorDate = solarDayContaining(now, config.location).anchorDate;
 
   useEffect(() => {
@@ -85,8 +106,20 @@ function Screen({
   onEndpointChange: (scheduleId: string, edge: 'on' | 'off', endpoint: Endpoint) => void;
 }) {
   const theme = useTheme();
-  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
+  // One selection shared by timeline and list; the editor opens where it was made.
+  const [selection, setSelection] = useState<{ scheduleId: string; source: 'timeline' | 'list' } | null>(null);
+  const selectedScheduleId = selection?.scheduleId ?? null;
   const selectedSchedule = selectedScheduleId ? config.schedules[selectedScheduleId] : undefined;
+  const select = (scheduleId: string, source: 'timeline' | 'list') =>
+    setSelection((previous) => (previous?.scheduleId === scheduleId ? null : { scheduleId, source }));
+  const editor = selectedSchedule && (
+    <ScheduleEditor
+      config={config}
+      anchorDate={anchorDate}
+      schedule={selectedSchedule}
+      onEndpointChange={onEndpointChange}
+    />
+  );
   const webSafeArea = Platform.OS === 'web'
     ? ({
         paddingLeft: 'max(16px, env(safe-area-inset-left))',
@@ -103,7 +136,13 @@ function Screen({
           </Text>
           <Text style={[styles.build, { color: theme.textMuted }]}>{BUILD_LABEL}</Text>
         </View>
-        <Timeline config={config} anchorDate={anchorDate} onTrimSchedule={onTrim} />
+        <Timeline
+          config={config}
+          anchorDate={anchorDate}
+          selectedScheduleId={selectedScheduleId}
+          onSelectSchedule={(scheduleId) => select(scheduleId, 'timeline')}
+          onTrimSchedule={onTrim}
+        />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Add device"
@@ -117,15 +156,10 @@ function Screen({
         </Pressable>
       </View>
 
-      {selectedSchedule && (
+      {selection?.source === 'timeline' && editor && (
         <View style={[styles.sectionContainer, { backgroundColor: theme.background }]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Edit schedule</Text>
-          <ScheduleEditor
-            config={config}
-            anchorDate={anchorDate}
-            schedule={selectedSchedule}
-            onEndpointChange={onEndpointChange}
-          />
+          {editor}
         </View>
       )}
 
@@ -140,9 +174,8 @@ function Screen({
           config={config}
           selectedScheduleId={selectedScheduleId}
           onToggle={onToggle}
-          onSelect={(scheduleId) => setSelectedScheduleId(
-            selectedScheduleId === scheduleId ? null : scheduleId,
-          )}
+          onSelect={(scheduleId) => select(scheduleId, 'list')}
+          editor={selection?.source === 'list' ? editor : null}
         />
       </View>
 
@@ -156,7 +189,10 @@ function Screen({
       {Platform.OS === 'web' ? (
         <View style={[styles.content, webSafeArea]}>{content}</View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>{content}</ScrollView>
+        // Keep what is under the finger still when the editor opens or closes above it.
+        <ScrollView contentContainerStyle={styles.content} maintainVisibleContentPosition={{ minIndexForVisible: 0 }}>
+          {content}
+        </ScrollView>
       )}
     </SafeAreaView>
   );

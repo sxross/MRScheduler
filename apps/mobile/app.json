@@ -19,7 +19,8 @@
       "output": "single"
     },
     "plugins": [
-      "expo-dev-client"
+      "expo-dev-client",
+      "./plugins/withSceneLifecycle"
     ],
     "experiments": {
       "baseUrl": "/MRScheduler"
